@@ -18,7 +18,7 @@ func TestRedirectHandler(t *testing.T) {
 	}
 	tests := []struct {
 		name          string
-		existedUrlMap map[string]string
+		existedURLMap map[string]string
 		shorten       string
 		method        string
 		want          want
@@ -27,7 +27,7 @@ func TestRedirectHandler(t *testing.T) {
 			name:          "success case",
 			method:        http.MethodGet,
 			shorten:       "/abc",
-			existedUrlMap: map[string]string{"abc": "http://example.com"},
+			existedURLMap: map[string]string{"abc": "http://example.com"},
 			want: want{
 				statusCode: http.StatusTemporaryRedirect,
 				origin:     "http://example.com",
@@ -37,7 +37,7 @@ func TestRedirectHandler(t *testing.T) {
 			name:          "invalid short ID",
 			method:        http.MethodGet,
 			shorten:       "/invalid",
-			existedUrlMap: map[string]string{"abc": "http://example.com"},
+			existedURLMap: map[string]string{"abc": "http://example.com"},
 			want: want{
 				statusCode: http.StatusBadRequest,
 				origin:     "",
@@ -47,7 +47,7 @@ func TestRedirectHandler(t *testing.T) {
 			name:          "no short ID",
 			method:        http.MethodGet,
 			shorten:       "/",
-			existedUrlMap: nil,
+			existedURLMap: nil,
 			want: want{
 				statusCode: http.StatusBadRequest,
 				origin:     "",
@@ -56,7 +56,7 @@ func TestRedirectHandler(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			urlMap = tt.existedUrlMap
+			urlMap = tt.existedURLMap
 			req := httptest.NewRequest(tt.method, tt.shorten, nil)
 			w := httptest.NewRecorder()
 			handler := http.HandlerFunc(redirectHandler)
