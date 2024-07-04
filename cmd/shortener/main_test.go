@@ -1,12 +1,14 @@
 package main
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -58,6 +60,9 @@ func TestRedirectHandler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			urlMap = tt.existedURLMap
 			req := httptest.NewRequest(tt.method, tt.shorten, nil)
+			rctx := chi.NewRouteContext()
+			rctx.URLParams.Add("id", strings.TrimPrefix(tt.shorten, "/"))
+			req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 			w := httptest.NewRecorder()
 			handler := http.HandlerFunc(redirectHandler)
 			handler.ServeHTTP(w, req)

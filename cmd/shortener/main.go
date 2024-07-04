@@ -1,11 +1,12 @@
 package main
 
 import (
-	"fmt"
 	"io"
+	"log"
 	"math/rand"
 	"net/http"
-	"strings"
+
+	"github.com/go-chi/chi/v5"
 )
 
 const (
@@ -26,13 +27,13 @@ func generateShortID() string {
 	return string(b)
 }
 
-func shortenURLHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
+func shortenURLHandler(w http.ResponseWriter, req *http.Request) {
+	if req.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusBadRequest)
 		return
 	}
 
-	body, err := io.ReadAll(r.Body)
+	body, err := io.ReadAll(req.Body)
 	if err != nil || len(body) == 0 {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
@@ -53,9 +54,8 @@ func shortenURLHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(shortURL))
 }
 
-func redirectHandler(w http.ResponseWriter, r *http.Request) {
-	shortID := strings.TrimPrefix(r.URL.Path, "/")
-	fmt.Println(shortID)
+func redirectHandler(w http.ResponseWriter, req *http.Request) {
+	shortID := chi.URLParam(req, "id")
 	if len(shortID) == 0 {
 		http.Error(w, "Invalid request", http.StatusBadRequest)
 		return
@@ -67,15 +67,18 @@ func redirectHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid request", http.StatusBadRequest)
 		return
 	}
-	fmt.Println(originalURL)
-	http.Redirect(w, r, originalURL, http.StatusTemporaryRedirect)
+
+	http.Redirect(w, req, originalURL, http.StatusTemporaryRedirect)
 }
 
 func main() {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", shortenURLHandler)
-	mux.HandleFunc("/{id}", redirectHandler)
-	if err := http.ListenAndServe(addr, mux); err != nil {
-		panic(err)
-	}
+	r := chi.NewRouter()
+	r.Route("/", func(r chi.Router) {
+		r.Post("/", shortenURLHandler)
+		r.Route("/{id}", func(r chi.Router) {
+			r.Get("/", redirectHandler)
+		})
+	})
+
+	log.Fatal(http.ListenAndServe(addr, r))
 }
