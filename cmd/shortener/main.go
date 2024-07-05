@@ -7,16 +7,17 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/mi4r/go-url-shortener.git/cmd/config"
 )
 
 const (
-	addr     = "localhost:8080"
 	idLength = 8
 	charset  = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 )
 
 var (
 	urlMap = make(map[string]string)
+	flags  *config.Flags
 )
 
 func generateShortID() string {
@@ -49,9 +50,13 @@ func shortenURLHandler(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	shortURL := "http://localhost:8080/" + shortID
+	shortURL := flags.BaseShortAddr + "/" + shortID
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(shortURL))
+	_, err = w.Write([]byte(shortURL))
+	if err != nil {
+		http.Error(w, "Failed to write response", http.StatusInternalServerError)
+		log.Println("Failed to write response:", err)
+	}
 }
 
 func redirectHandler(w http.ResponseWriter, req *http.Request) {
@@ -72,6 +77,8 @@ func redirectHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
+	flags = config.Init()
+
 	r := chi.NewRouter()
 	r.Route("/", func(r chi.Router) {
 		r.Post("/", shortenURLHandler)
@@ -80,5 +87,6 @@ func main() {
 		})
 	})
 
-	log.Fatal(http.ListenAndServe(addr, r))
+	log.Printf("Starting server on %s\n", flags.RunAddr)
+	log.Fatal(http.ListenAndServe(flags.RunAddr, r))
 }
