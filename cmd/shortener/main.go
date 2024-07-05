@@ -54,7 +54,7 @@ func shortenURLHandler(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	_, err = w.Write([]byte(shortURL))
 	if err != nil {
-		http.Error(w, "Failed to write response", http.StatusInternalServerError)
+		http.Error(w, "Failed to write response", http.StatusBadRequest)
 		log.Println("Failed to write response:", err)
 	}
 }

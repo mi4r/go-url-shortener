@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/mi4r/go-url-shortener.git/cmd/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -85,6 +86,10 @@ func TestRedirectHandler(t *testing.T) {
 
 func TestShortenURLHandler(t *testing.T) {
 	urlMap = make(map[string]string)
+	flags = &config.Flags{
+		RunAddr:       "localhost:8080",
+		BaseShortAddr: "http://localhost:8080",
+	}
 	type want struct {
 		expectedCode int
 		expectedResp string
