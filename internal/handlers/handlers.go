@@ -18,7 +18,7 @@ const (
 )
 
 var (
-	UrlMap = make(map[string]string)
+	URLMap = make(map[string]string)
 	Flags  *config.Flags
 )
 
@@ -46,8 +46,8 @@ func ShortenURLHandler(w http.ResponseWriter, req *http.Request) {
 	var shortID string
 	for {
 		shortID = generateShortID()
-		if _, exists := UrlMap[shortID]; !exists {
-			UrlMap[shortID] = originalURL
+		if _, exists := URLMap[shortID]; !exists {
+			URLMap[shortID] = originalURL
 			break
 		}
 	}
@@ -68,7 +68,7 @@ func RedirectHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	originalURL, exists := UrlMap[shortID]
+	originalURL, exists := URLMap[shortID]
 
 	if !exists {
 		http.Error(w, "Invalid request", http.StatusBadRequest)

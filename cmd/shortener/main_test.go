@@ -60,7 +60,7 @@ func TestRedirectHandler(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			handlers.UrlMap = tt.existedURLMap
+			handlers.URLMap = tt.existedURLMap
 			req := httptest.NewRequest(tt.method, tt.shorten, nil)
 			rctx := chi.NewRouteContext()
 			rctx.URLParams.Add("id", strings.TrimPrefix(tt.shorten, "/"))
@@ -86,7 +86,7 @@ func TestRedirectHandler(t *testing.T) {
 }
 
 func TestShortenURLHandler(t *testing.T) {
-	handlers.UrlMap = make(map[string]string)
+	handlers.URLMap = make(map[string]string)
 	handlers.Flags = &config.Flags{
 		RunAddr:       "localhost:8080",
 		BaseShortAddr: "http://localhost:8080",
