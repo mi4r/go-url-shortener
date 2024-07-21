@@ -9,7 +9,8 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/mi4r/go-url-shortener.git/cmd/config"
+	"github.com/mi4r/go-url-shortener/cmd/config"
+	"github.com/mi4r/go-url-shortener/internal/handlers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -59,13 +60,13 @@ func TestRedirectHandler(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			urlMap = tt.existedURLMap
+			handlers.UrlMap = tt.existedURLMap
 			req := httptest.NewRequest(tt.method, tt.shorten, nil)
 			rctx := chi.NewRouteContext()
 			rctx.URLParams.Add("id", strings.TrimPrefix(tt.shorten, "/"))
 			req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 			w := httptest.NewRecorder()
-			handler := http.HandlerFunc(redirectHandler)
+			handler := http.HandlerFunc(handlers.RedirectHandler)
 			handler.ServeHTTP(w, req)
 
 			res := w.Result()
@@ -85,8 +86,8 @@ func TestRedirectHandler(t *testing.T) {
 }
 
 func TestShortenURLHandler(t *testing.T) {
-	urlMap = make(map[string]string)
-	flags = &config.Flags{
+	handlers.UrlMap = make(map[string]string)
+	handlers.Flags = &config.Flags{
 		RunAddr:       "localhost:8080",
 		BaseShortAddr: "http://localhost:8080",
 	}
@@ -132,7 +133,7 @@ func TestShortenURLHandler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			req := httptest.NewRequest(tt.method, "/", strings.NewReader(tt.originalURL))
 			w := httptest.NewRecorder()
-			handler := http.HandlerFunc(shortenURLHandler)
+			handler := http.HandlerFunc(handlers.ShortenURLHandler)
 			handler.ServeHTTP(w, req)
 
 			res := w.Result()
