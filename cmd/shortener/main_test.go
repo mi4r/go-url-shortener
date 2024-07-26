@@ -155,7 +155,7 @@ func TestShortenURLHandler(t *testing.T) {
 	}
 }
 
-func TestApiShortenURLHandler(t *testing.T) {
+func TestAPIShortenURLHandler(t *testing.T) {
 	handlers.URLMap = make(map[string]string)
 	handlers.Flags = &config.Flags{
 		RunAddr:       "localhost:8080",
@@ -220,7 +220,7 @@ func TestApiShortenURLHandler(t *testing.T) {
 			req.Header.Set("Content-Type", "application/json")
 
 			w := httptest.NewRecorder()
-			handler := http.HandlerFunc(handlers.ApiShortenURLHandler)
+			handler := http.HandlerFunc(handlers.APIShortenURLHandler)
 			handler.ServeHTTP(w, req)
 
 			res := w.Result()

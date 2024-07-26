@@ -70,7 +70,7 @@ func ShortenURLHandler(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func ApiShortenURLHandler(w http.ResponseWriter, req *http.Request) {
+func APIShortenURLHandler(w http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusBadRequest)
 		return

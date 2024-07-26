@@ -32,7 +32,7 @@ func main() {
 		})
 	})
 	r.Route("/api", func(r chi.Router) {
-		r.Post("/shorten", handlers.ApiShortenURLHandler)
+		r.Post("/shorten", handlers.APIShortenURLHandler)
 	})
 
 	logger.Sugar.Info("Starting server", zap.String("address", handlers.Flags.RunAddr))
