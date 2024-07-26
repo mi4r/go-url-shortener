@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -148,6 +150,91 @@ func TestShortenURLHandler(t *testing.T) {
 				assert.True(t, strings.HasPrefix(string(resBody), tt.want.expectedResp))
 			} else {
 				assert.Equal(t, tt.want.expectedResp, string(resBody))
+			}
+		})
+	}
+}
+
+func TestApiShortenURLHandler(t *testing.T) {
+	handlers.URLMap = make(map[string]string)
+	handlers.Flags = &config.Flags{
+		RunAddr:       "localhost:8080",
+		BaseShortAddr: "http://localhost:8080",
+	}
+	type want struct {
+		expectedCode int
+		expectedResp string
+	}
+	tests := []struct {
+		name        string
+		method      string
+		requestBody map[string]string
+		want        want
+	}{
+		{
+			name:        "sucess case",
+			method:      http.MethodPost,
+			requestBody: map[string]string{"url": "http://example.com"},
+			want: want{
+				expectedCode: http.StatusCreated,
+				expectedResp: "http://localhost:8080/",
+			},
+		},
+		{
+			name:        "empty case",
+			method:      http.MethodPost,
+			requestBody: map[string]string{},
+			want: want{
+				expectedCode: http.StatusBadRequest,
+				expectedResp: "Invalid request body\n",
+			},
+		},
+		{
+			name:        "invalid method case",
+			method:      http.MethodGet,
+			requestBody: nil,
+			want: want{
+				expectedCode: http.StatusBadRequest,
+				expectedResp: "Invalid request method\n",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var reqBody []byte
+			var err error
+
+			if tt.requestBody != nil {
+				reqBody, err = json.Marshal(tt.requestBody)
+				if err != nil {
+					t.Fatalf("Failed to marshal request body: %v", err)
+				}
+			} else {
+				reqBody = []byte("invalid json")
+			}
+
+			req := httptest.NewRequest(tt.method, "/api/shorten", bytes.NewReader(reqBody))
+			if err != nil {
+				t.Fatalf("Failed to create request: %v", err)
+			}
+			req.Header.Set("Content-Type", "application/json")
+
+			w := httptest.NewRecorder()
+			handler := http.HandlerFunc(handlers.ApiShortenURLHandler)
+			handler.ServeHTTP(w, req)
+
+			res := w.Result()
+			defer res.Body.Close()
+
+			assert.Equal(t, tt.want.expectedCode, res.StatusCode)
+
+			if tt.want.expectedCode == http.StatusCreated {
+				var responseBody map[string]string
+
+				if err := json.NewDecoder(res.Body).Decode(&responseBody); err != nil {
+					t.Fatalf("Failed to decode response body: %v", err)
+				}
+				assert.Contains(t, responseBody["result"], "http://localhost:8080/", "Expected response to contain short URL")
 			}
 		})
 	}

@@ -31,6 +31,9 @@ func main() {
 			r.Get("/", handlers.RedirectHandler)
 		})
 	})
+	r.Route("/api", func(r chi.Router) {
+		r.Post("/shorten", handlers.ApiShortenURLHandler)
+	})
 
 	logger.Sugar.Info("Starting server", zap.String("address", handlers.Flags.RunAddr))
 	log.Fatal(http.ListenAndServe(handlers.Flags.RunAddr, r))

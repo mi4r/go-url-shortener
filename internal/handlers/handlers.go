@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 
@@ -21,6 +22,14 @@ var (
 	URLMap = make(map[string]string)
 	Flags  *config.Flags
 )
+
+type ShortenRequest struct {
+	URL string `json:"url"`
+}
+
+type ShortenResponse struct {
+	Result string `json:"result"`
+}
 
 func generateShortID() string {
 	b := make([]byte, idLength)
@@ -56,6 +65,45 @@ func ShortenURLHandler(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	_, err = w.Write([]byte(shortURL))
 	if err != nil {
+		http.Error(w, "Failed to write response", http.StatusBadRequest)
+		logger.Sugar.Error("Failed to write response", zap.Error(err))
+	}
+}
+
+func ApiShortenURLHandler(w http.ResponseWriter, req *http.Request) {
+	if req.Method != http.MethodPost {
+		http.Error(w, "Invalid request method", http.StatusBadRequest)
+		return
+	}
+
+	var requestBody ShortenRequest
+
+	decoder := json.NewDecoder(req.Body)
+	if err := decoder.Decode(&requestBody); err != nil || requestBody.URL == "" {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	originalURL := requestBody.URL
+
+	var shortID string
+	for {
+		shortID = generateShortID()
+		if _, exists := URLMap[shortID]; !exists {
+			URLMap[shortID] = originalURL
+			break
+		}
+	}
+
+	shortURL := Flags.BaseShortAddr + "/" + shortID
+
+	responseBody := ShortenResponse{
+		Result: shortURL,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	if err := json.NewEncoder(w).Encode(responseBody); err != nil {
 		http.Error(w, "Failed to write response", http.StatusBadRequest)
 		logger.Sugar.Error("Failed to write response", zap.Error(err))
 	}
