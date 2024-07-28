@@ -26,7 +26,7 @@ func main() {
 
 	r := chi.NewRouter()
 	r.Use(logger.LoggingMiddleware)
-	r.Use(compress.GZIPMiddleware)
+	r.Use(compress.CompressMiddleware)
 	r.Route("/", func(r chi.Router) {
 		r.Post("/", handlers.ShortenURLHandler)
 		r.Route("/{id}", func(r chi.Router) {
