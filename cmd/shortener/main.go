@@ -8,6 +8,7 @@ import (
 	"github.com/mi4r/go-url-shortener/cmd/config"
 	"go.uber.org/zap"
 
+	"github.com/mi4r/go-url-shortener/internal/compress"
 	"github.com/mi4r/go-url-shortener/internal/handlers"
 	"github.com/mi4r/go-url-shortener/internal/logger"
 )
@@ -25,6 +26,7 @@ func main() {
 
 	r := chi.NewRouter()
 	r.Use(logger.LoggingMiddleware)
+	r.Use(compress.GZIPMiddleware)
 	r.Route("/", func(r chi.Router) {
 		r.Post("/", handlers.ShortenURLHandler)
 		r.Route("/{id}", func(r chi.Router) {
