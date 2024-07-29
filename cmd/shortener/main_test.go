@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
@@ -24,7 +25,7 @@ func TestRedirectHandler(t *testing.T) {
 	}
 	tests := []struct {
 		name          string
-		existedURLMap map[string]string
+		existedURLMap map[string]handlers.URL
 		shorten       string
 		method        string
 		want          want
@@ -33,7 +34,7 @@ func TestRedirectHandler(t *testing.T) {
 			name:          "success case",
 			method:        http.MethodGet,
 			shorten:       "/abc",
-			existedURLMap: map[string]string{"abc": "http://example.com"},
+			existedURLMap: map[string]handlers.URL{"abc": {ShortURL: "abc", OriginalURL: "http://example.com"}},
 			want: want{
 				statusCode: http.StatusTemporaryRedirect,
 				origin:     "http://example.com",
@@ -43,7 +44,7 @@ func TestRedirectHandler(t *testing.T) {
 			name:          "invalid short ID",
 			method:        http.MethodGet,
 			shorten:       "/invalid",
-			existedURLMap: map[string]string{"abc": "http://example.com"},
+			existedURLMap: map[string]handlers.URL{"abc": {ShortURL: "abc", OriginalURL: "http://example.com"}},
 			want: want{
 				statusCode: http.StatusBadRequest,
 				origin:     "",
@@ -88,11 +89,14 @@ func TestRedirectHandler(t *testing.T) {
 }
 
 func TestShortenURLHandler(t *testing.T) {
-	handlers.URLMap = make(map[string]string)
+	handlers.URLMap = make(map[string]handlers.URL)
 	handlers.Flags = &config.Flags{
-		RunAddr:       "localhost:8080",
-		BaseShortAddr: "http://localhost:8080",
+		RunAddr:            "localhost:8080",
+		BaseShortAddr:      "http://localhost:8080",
+		URLStorageFilePath: "test_storage.json",
 	}
+	defer os.Remove("test_storage.json")
+
 	type want struct {
 		expectedCode int
 		expectedResp string
@@ -156,11 +160,14 @@ func TestShortenURLHandler(t *testing.T) {
 }
 
 func TestAPIShortenURLHandler(t *testing.T) {
-	handlers.URLMap = make(map[string]string)
+	handlers.URLMap = make(map[string]handlers.URL)
 	handlers.Flags = &config.Flags{
-		RunAddr:       "localhost:8080",
-		BaseShortAddr: "http://localhost:8080",
+		RunAddr:            "localhost:8080",
+		BaseShortAddr:      "http://localhost:8080",
+		URLStorageFilePath: "test_storage.json",
 	}
+	defer os.Remove("test_storage.json")
+
 	type want struct {
 		expectedCode int
 		expectedResp string

@@ -24,6 +24,11 @@ func main() {
 
 	handlers.Flags = config.Init()
 
+	err = handlers.LoadFromFile(handlers.Flags.URLStorageFilePath)
+	if err != nil {
+		log.Printf("Failed to load data from file: %v", err)
+	}
+
 	r := chi.NewRouter()
 	r.Use(logger.LoggingMiddleware)
 	r.Use(compress.CompressMiddleware)
