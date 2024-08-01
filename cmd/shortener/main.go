@@ -1,92 +1,47 @@
 package main
 
 import (
-	"io"
 	"log"
-	"math/rand"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/mi4r/go-url-shortener.git/cmd/config"
+	"github.com/mi4r/go-url-shortener/cmd/config"
+	"go.uber.org/zap"
+
+	"github.com/mi4r/go-url-shortener/internal/compress"
+	"github.com/mi4r/go-url-shortener/internal/handlers"
+	"github.com/mi4r/go-url-shortener/internal/logger"
 )
-
-const (
-	idLength = 8
-	charset  = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-)
-
-var (
-	urlMap = make(map[string]string)
-	flags  *config.Flags
-)
-
-func generateShortID() string {
-	b := make([]byte, idLength)
-	for i := range b {
-		b[i] = charset[rand.Intn(len(charset))]
-	}
-	return string(b)
-}
-
-func shortenURLHandler(w http.ResponseWriter, req *http.Request) {
-	if req.Method != http.MethodPost {
-		http.Error(w, "Invalid request method", http.StatusBadRequest)
-		return
-	}
-
-	body, err := io.ReadAll(req.Body)
-	if err != nil || len(body) == 0 {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
-	originalURL := string(body)
-
-	var shortID string
-	for {
-		shortID = generateShortID()
-		if _, exists := urlMap[shortID]; !exists {
-			urlMap[shortID] = originalURL
-			break
-		}
-	}
-
-	shortURL := flags.BaseShortAddr + "/" + shortID
-	w.WriteHeader(http.StatusCreated)
-	_, err = w.Write([]byte(shortURL))
-	if err != nil {
-		http.Error(w, "Failed to write response", http.StatusBadRequest)
-		log.Println("Failed to write response:", err)
-	}
-}
-
-func redirectHandler(w http.ResponseWriter, req *http.Request) {
-	shortID := chi.URLParam(req, "id")
-	if len(shortID) == 0 {
-		http.Error(w, "Invalid request", http.StatusBadRequest)
-		return
-	}
-
-	originalURL, exists := urlMap[shortID]
-
-	if !exists {
-		http.Error(w, "Invalid request", http.StatusBadRequest)
-		return
-	}
-
-	http.Redirect(w, req, originalURL, http.StatusTemporaryRedirect)
-}
 
 func main() {
-	flags = config.Init()
+	lgr, err := zap.NewProduction()
+	if err != nil {
+		log.Fatalf("can't initialize zap logger: %v", err)
+	}
+	defer lgr.Sync()
+
+	logger.Sugar = *lgr.Sugar()
+
+	handlers.Flags = config.Init()
+
+	err = handlers.LoadFromFile(handlers.Flags.URLStorageFilePath)
+	if err != nil {
+		log.Printf("Failed to load data from file: %v", err)
+	}
 
 	r := chi.NewRouter()
+	r.Use(logger.LoggingMiddleware)
+	r.Use(compress.CompressMiddleware)
 	r.Route("/", func(r chi.Router) {
-		r.Post("/", shortenURLHandler)
+		r.Post("/", handlers.ShortenURLHandler)
 		r.Route("/{id}", func(r chi.Router) {
-			r.Get("/", redirectHandler)
+			r.Get("/", handlers.RedirectHandler)
 		})
 	})
+	r.Route("/api", func(r chi.Router) {
+		r.Post("/shorten", handlers.APIShortenURLHandler)
+	})
 
-	log.Printf("Starting server on %s\n", flags.RunAddr)
-	log.Fatal(http.ListenAndServe(flags.RunAddr, r))
+	logger.Sugar.Info("Starting server", zap.String("address", handlers.Flags.RunAddr))
+	log.Fatal(http.ListenAndServe(handlers.Flags.RunAddr, r))
 }
