@@ -11,6 +11,10 @@ import (
 	"github.com/mi4r/go-url-shortener/internal/compress"
 	"github.com/mi4r/go-url-shortener/internal/handlers"
 	"github.com/mi4r/go-url-shortener/internal/logger"
+
+	"database/sql"
+
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 func main() {
@@ -29,6 +33,12 @@ func main() {
 		log.Printf("Failed to load data from file: %v", err)
 	}
 
+	handlers.Database, err = sql.Open("pgx", handlers.Flags.DataBaseDSN)
+	if err != nil {
+		logger.Sugar.Error("Cannot open database", err)
+	}
+	defer handlers.Database.Close()
+
 	r := chi.NewRouter()
 	r.Use(logger.LoggingMiddleware)
 	r.Use(compress.CompressMiddleware)
@@ -41,6 +51,7 @@ func main() {
 	r.Route("/api", func(r chi.Router) {
 		r.Post("/shorten", handlers.APIShortenURLHandler)
 	})
+	r.Get("/ping", handlers.PingHandler)
 
 	logger.Sugar.Info("Starting server", zap.String("address", handlers.Flags.RunAddr))
 	log.Fatal(http.ListenAndServe(handlers.Flags.RunAddr, r))

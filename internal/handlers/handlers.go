@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -21,8 +22,9 @@ const (
 )
 
 var (
-	URLMap = make(map[string]URL)
-	Flags  *config.Flags
+	URLMap   = make(map[string]URL)
+	Flags    *config.Flags
+	Database *sql.DB
 )
 
 type URL struct {
@@ -44,7 +46,11 @@ func SaveToFile(filePath string, url URL) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			logger.Sugar.Error(err)
+		}
+	}()
 
 	encoder := json.NewEncoder(file)
 	if err := encoder.Encode(url); err != nil {
@@ -58,7 +64,11 @@ func LoadFromFile(filePath string) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			logger.Sugar.Error(err)
+		}
+	}()
 
 	decoder := json.NewDecoder(file)
 	for {
@@ -191,4 +201,13 @@ func RedirectHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	http.Redirect(w, req, url.OriginalURL, http.StatusTemporaryRedirect)
+}
+
+func PingHandler(w http.ResponseWriter, req *http.Request) {
+	if err := Database.Ping(); err != nil {
+		http.Error(w, "Connection to the database is not verified", http.StatusInternalServerError)
+		logger.Sugar.Error("Connection to the database is not verified: ", zap.Error(err))
+		return
+	}
+	w.WriteHeader(http.StatusOK)
 }
