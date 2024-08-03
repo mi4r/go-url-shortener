@@ -10,16 +10,18 @@ type Flags struct {
 	RunAddr            string
 	BaseShortAddr      string
 	URLStorageFilePath string
+	DataBaseDSN        string
 }
 
 func (f *Flags) String() string {
-	return fmt.Sprintf("RunAddr: %s, BaseShortAddr: %s, URLStorageFileName: %s", f.RunAddr, f.BaseShortAddr, f.URLStorageFilePath)
+	return fmt.Sprintf("RunAddr: %s, BaseShortAddr: %s, URLStorageFileName: %s, DataBaseDSN: %s", f.RunAddr, f.BaseShortAddr, f.URLStorageFilePath, f.DataBaseDSN)
 }
 
 func Init() *Flags {
 	addr := flag.String("a", "localhost:8080", "Address and port to run server")
 	base := flag.String("b", "http://localhost:8080", "Base shorten url")
 	storagePath := flag.String("f", "url_storage.json", "URL storage path")
+	dataBase := flag.String("d", "host=localhost user=url_storage password=1234 dbname=url_storage sslmode=disable", "Database connection address")
 	flag.Parse()
 
 	if envAddr := os.Getenv("SERVER_ADDRESS"); envAddr != "" {
@@ -31,10 +33,14 @@ func Init() *Flags {
 	if envStoragePath := os.Getenv("FILE_STORAGE_PATH"); envStoragePath != "" {
 		*storagePath = envStoragePath
 	}
+	if envDataBase := os.Getenv("DATABASE_DSN"); envDataBase != "" {
+		*dataBase = envDataBase
+	}
 
 	return &Flags{
 		RunAddr:            *addr,
 		BaseShortAddr:      *base,
 		URLStorageFilePath: *storagePath,
+		DataBaseDSN:        *dataBase,
 	}
 }

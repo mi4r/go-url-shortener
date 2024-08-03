@@ -9,6 +9,8 @@ import (
 	"net/url"
 	"os"
 	"strings"
+
+	"github.com/mi4r/go-url-shortener/internal/logger"
 )
 
 func main() {
@@ -41,7 +43,7 @@ func main() {
 	// отправляем запрос и получаем ответ
 	response, err := client.Do(request)
 	if err != nil {
-		log.Fatal(err)
+		logger.Sugar.Warn(err)
 	}
 	// выводим код ответа
 	fmt.Println("Статус-код ", response.Status)

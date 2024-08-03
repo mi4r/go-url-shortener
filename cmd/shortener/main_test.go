@@ -94,6 +94,7 @@ func TestShortenURLHandler(t *testing.T) {
 		RunAddr:            "localhost:8080",
 		BaseShortAddr:      "http://localhost:8080",
 		URLStorageFilePath: "test_storage.json",
+		DataBaseDSN:        "host=localhost user=url_storage password=1234 dbname=url_storage sslmode=disable",
 	}
 	defer os.Remove("test_storage.json")
 
@@ -165,6 +166,7 @@ func TestAPIShortenURLHandler(t *testing.T) {
 		RunAddr:            "localhost:8080",
 		BaseShortAddr:      "http://localhost:8080",
 		URLStorageFilePath: "test_storage.json",
+		DataBaseDSN:        "host=localhost user=url_storage password=1234 dbname=url_storage sslmode=disable",
 	}
 	defer os.Remove("test_storage.json")
 
