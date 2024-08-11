@@ -1,11 +1,9 @@
 package handlers
 
 import (
-	"database/sql"
 	"encoding/json"
 	"io"
 	"net/http"
-	"os"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
@@ -14,6 +12,7 @@ import (
 	"golang.org/x/exp/rand"
 
 	"github.com/mi4r/go-url-shortener/internal/logger"
+	"github.com/mi4r/go-url-shortener/internal/storage"
 )
 
 const (
@@ -22,16 +21,16 @@ const (
 )
 
 var (
-	URLMap   = make(map[string]URL)
-	Flags    *config.Flags
-	Database *sql.DB
+	// URLMap   = make(map[string]URL)
+	Flags *config.Flags
+	// Database *sql.DB
 )
 
-type URL struct {
-	UUID        string `json:"uuid"`
-	ShortURL    string `json:"short_url"`
-	OriginalURL string `json:"original_url"`
-}
+// type URL struct {
+// 	UUID        string `json:"uuid"`
+// 	ShortURL    string `json:"short_url"`
+// 	OriginalURL string `json:"original_url"`
+// }
 
 type ShortenRequest struct {
 	URL string `json:"url"`
@@ -41,48 +40,48 @@ type ShortenResponse struct {
 	Result string `json:"result"`
 }
 
-func SaveToFile(filePath string, url URL) error {
-	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err := file.Close(); err != nil {
-			logger.Sugar.Error(err)
-		}
-	}()
+// func SaveToFile(filePath string, url URL) error {
+// 	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	defer func() {
+// 		if err := file.Close(); err != nil {
+// 			logger.Sugar.Error(err)
+// 		}
+// 	}()
 
-	encoder := json.NewEncoder(file)
-	if err := encoder.Encode(url); err != nil {
-		return err
-	}
-	return nil
-}
+// 	encoder := json.NewEncoder(file)
+// 	if err := encoder.Encode(url); err != nil {
+// 		return err
+// 	}
+// 	return nil
+// }
 
-func LoadFromFile(filePath string) error {
-	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_RDONLY, 0666)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err := file.Close(); err != nil {
-			logger.Sugar.Error(err)
-		}
-	}()
+// func LoadFromFile(filePath string) error {
+// 	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_RDONLY, 0666)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	defer func() {
+// 		if err := file.Close(); err != nil {
+// 			logger.Sugar.Error(err)
+// 		}
+// 	}()
 
-	decoder := json.NewDecoder(file)
-	for {
-		var url URL
-		if err := decoder.Decode(&url); err != nil {
-			if err == io.EOF {
-				break
-			}
-			return err
-		}
-		URLMap[url.ShortURL] = url
-	}
-	return nil
-}
+// 	decoder := json.NewDecoder(file)
+// 	for {
+// 		var url URL
+// 		if err := decoder.Decode(&url); err != nil {
+// 			if err == io.EOF {
+// 				break
+// 			}
+// 			return err
+// 		}
+// 		URLMap[url.ShortURL] = url
+// 	}
+// 	return nil
+// }
 
 func generateShortID() string {
 	b := make([]byte, idLength)
@@ -92,122 +91,153 @@ func generateShortID() string {
 	return string(b)
 }
 
-func ShortenURLHandler(w http.ResponseWriter, req *http.Request) {
-	if req.Method != http.MethodPost {
-		http.Error(w, "Invalid request method", http.StatusBadRequest)
-		return
-	}
+func ShortenURLHandler(storageImpl storage.Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		if req.Method != http.MethodPost {
+			http.Error(w, "Invalid request method", http.StatusBadRequest)
+			return
+		}
 
-	body, err := io.ReadAll(req.Body)
-	if err != nil || len(body) == 0 {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
-	originalURL := string(body)
+		body, err := io.ReadAll(req.Body)
+		if err != nil || len(body) == 0 {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+		originalURL := string(body)
 
-	var shortID string
-	for {
-		shortID = generateShortID()
-		if _, exists := URLMap[shortID]; !exists {
-			url := URL{
-				UUID:        strconv.Itoa(len(URLMap) + 1),
-				ShortURL:    shortID,
-				OriginalURL: originalURL,
+		var shortID string
+		for {
+			shortID = generateShortID()
+			if _, err := storageImpl.Get(shortID); err != nil {
+				nextID, err := storageImpl.GetNextID()
+				if err != nil {
+					http.Error(w, "Failed to generate UUID", http.StatusInternalServerError)
+					return
+				}
+				url := storage.URL{
+					UUID:        strconv.Itoa(nextID),
+					ShortURL:    shortID,
+					OriginalURL: originalURL,
+				}
+				if err := storageImpl.Save(url); err != nil {
+					http.Error(w, "Failed to save data", http.StatusInternalServerError)
+					logger.Sugar.Error("Failed to save data:", zap.Error(err))
+					return
+				}
+				break
 			}
-			URLMap[shortID] = url
 
-			if err := SaveToFile(Flags.URLStorageFilePath, url); err != nil {
-				http.Error(w, "Failed to save data", http.StatusInternalServerError)
-				logger.Sugar.Error("Failed to save data:", zap.Error(err))
-				return
-			}
+		}
 
-			break
+		shortURL := Flags.BaseShortAddr + "/" + shortID
+		w.WriteHeader(http.StatusCreated)
+		_, err = w.Write([]byte(shortURL))
+		if err != nil {
+			http.Error(w, "Failed to write response", http.StatusBadRequest)
+			logger.Sugar.Error("Failed to write response", zap.Error(err))
 		}
 	}
-
-	shortURL := Flags.BaseShortAddr + "/" + shortID
-	w.WriteHeader(http.StatusCreated)
-	_, err = w.Write([]byte(shortURL))
-	if err != nil {
-		http.Error(w, "Failed to write response", http.StatusBadRequest)
-		logger.Sugar.Error("Failed to write response", zap.Error(err))
-	}
 }
 
-func APIShortenURLHandler(w http.ResponseWriter, req *http.Request) {
-	if req.Method != http.MethodPost {
-		http.Error(w, "Invalid request method", http.StatusBadRequest)
-		return
-	}
+func APIShortenURLHandler(storageImpl storage.Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		if req.Method != http.MethodPost {
+			http.Error(w, "Invalid request method", http.StatusBadRequest)
+			return
+		}
 
-	var requestBody ShortenRequest
+		var requestBody ShortenRequest
 
-	decoder := json.NewDecoder(req.Body)
-	if err := decoder.Decode(&requestBody); err != nil || requestBody.URL == "" {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
+		decoder := json.NewDecoder(req.Body)
+		if err := decoder.Decode(&requestBody); err != nil || requestBody.URL == "" {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
 
-	originalURL := requestBody.URL
+		originalURL := requestBody.URL
 
-	var shortID string
-	for {
-		shortID = generateShortID()
-		if _, exists := URLMap[shortID]; !exists {
-			url := URL{
-				UUID:        strconv.Itoa(len(URLMap) + 1),
-				ShortURL:    shortID,
-				OriginalURL: originalURL,
+		var shortID string
+		for {
+			shortID = generateShortID()
+			if _, err := storageImpl.Get(shortID); err != nil {
+				nextID, err := storageImpl.GetNextID()
+				if err != nil {
+					http.Error(w, "Failed to generate UUID", http.StatusInternalServerError)
+					return
+				}
+				url := storage.URL{
+					UUID:        strconv.Itoa(nextID),
+					ShortURL:    shortID,
+					OriginalURL: originalURL,
+				}
+				if err := storageImpl.Save(url); err != nil {
+					http.Error(w, "Failed to save data", http.StatusInternalServerError)
+					logger.Sugar.Error("Failed to save data:", zap.Error(err))
+					return
+				}
+				break
 			}
-			URLMap[shortID] = url
+		}
 
-			if err := SaveToFile(Flags.URLStorageFilePath, url); err != nil {
-				http.Error(w, "Failed to save data", http.StatusInternalServerError)
-				logger.Sugar.Error("Failed to save data:", zap.Error(err))
-				return
-			}
+		shortURL := Flags.BaseShortAddr + "/" + shortID
 
-			break
+		responseBody := ShortenResponse{
+			Result: shortURL,
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		if err := json.NewEncoder(w).Encode(responseBody); err != nil {
+			http.Error(w, "Failed to write response", http.StatusBadRequest)
+			logger.Sugar.Error("Failed to write response", zap.Error(err))
 		}
 	}
+}
 
-	shortURL := Flags.BaseShortAddr + "/" + shortID
+func RedirectHandler(storageImpl storage.Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		shortID := chi.URLParam(req, "id")
+		if len(shortID) == 0 {
+			http.Error(w, "Invalid request", http.StatusBadRequest)
+			return
+		}
 
-	responseBody := ShortenResponse{
-		Result: shortURL,
-	}
+		// url, exists := URLMap[shortID]
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	if err := json.NewEncoder(w).Encode(responseBody); err != nil {
-		http.Error(w, "Failed to write response", http.StatusBadRequest)
-		logger.Sugar.Error("Failed to write response", zap.Error(err))
+		// if !exists {
+		// 	http.Error(w, "Invalid request", http.StatusBadRequest)
+		// 	return
+		// }
+
+		url, err := storageImpl.Get(shortID)
+		if err != nil {
+			http.Error(w, "Invalid request", http.StatusBadRequest)
+			return
+		}
+
+		http.Redirect(w, req, url.OriginalURL, http.StatusTemporaryRedirect)
 	}
 }
 
-func RedirectHandler(w http.ResponseWriter, req *http.Request) {
-	shortID := chi.URLParam(req, "id")
-	if len(shortID) == 0 {
-		http.Error(w, "Invalid request", http.StatusBadRequest)
-		return
+func PingHandler(storageImpl storage.Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		// if err := Database.Ping(); err != nil {
+		// 	http.Error(w, "Connection to the database is not verified", http.StatusInternalServerError)
+		// 	logger.Sugar.Error("Connection to the database is not verified: ", zap.Error(err))
+		// 	return
+		// }
+		pinger, ok := storageImpl.(storage.Pinger)
+		if !ok {
+			http.Error(w, "Connection to the database is not verified", http.StatusInternalServerError)
+			logger.Sugar.Error("Connection to the database is not verified")
+			return
+		}
+		if err := pinger.Ping(); err != nil {
+			http.Error(w, "Connection to the database is not verified", http.StatusInternalServerError)
+			logger.Sugar.Error("Connection to the database is not verified: ", zap.Error(err))
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
 	}
-
-	url, exists := URLMap[shortID]
-
-	if !exists {
-		http.Error(w, "Invalid request", http.StatusBadRequest)
-		return
-	}
-
-	http.Redirect(w, req, url.OriginalURL, http.StatusTemporaryRedirect)
-}
-
-func PingHandler(w http.ResponseWriter, req *http.Request) {
-	if err := Database.Ping(); err != nil {
-		http.Error(w, "Connection to the database is not verified", http.StatusInternalServerError)
-		logger.Sugar.Error("Connection to the database is not verified: ", zap.Error(err))
-		return
-	}
-	w.WriteHeader(http.StatusOK)
 }

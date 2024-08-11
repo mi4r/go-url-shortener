@@ -21,7 +21,7 @@ func Init() *Flags {
 	addr := flag.String("a", "localhost:8080", "Address and port to run server")
 	base := flag.String("b", "http://localhost:8080", "Base shorten url")
 	storagePath := flag.String("f", "url_storage.json", "URL storage path")
-	dataBase := flag.String("d", "host=localhost user=url_storage password=1234 dbname=url_storage sslmode=disable", "Database connection address")
+	dataBase := flag.String("d", "", "Database connection address")
 	flag.Parse()
 
 	if envAddr := os.Getenv("SERVER_ADDRESS"); envAddr != "" {

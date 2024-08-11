@@ -11,8 +11,7 @@ import (
 	"github.com/mi4r/go-url-shortener/internal/compress"
 	"github.com/mi4r/go-url-shortener/internal/handlers"
 	"github.com/mi4r/go-url-shortener/internal/logger"
-
-	"database/sql"
+	"github.com/mi4r/go-url-shortener/internal/storage"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
@@ -28,30 +27,39 @@ func main() {
 
 	handlers.Flags = config.Init()
 
-	err = handlers.LoadFromFile(handlers.Flags.URLStorageFilePath)
-	if err != nil {
-		log.Printf("Failed to load data from file: %v", err)
-	}
+	var storageImpl storage.Storage
 
-	handlers.Database, err = sql.Open("pgx", handlers.Flags.DataBaseDSN)
-	if err != nil {
-		logger.Sugar.Error("Cannot open database", err)
+	if handlers.Flags.DataBaseDSN != "" {
+		storageImpl, err = storage.NewDBStorage(handlers.Flags.DataBaseDSN)
+		if err != nil {
+			logger.Sugar.Warn("Falling back to file storage due to DB error: ", err)
+		}
 	}
-	defer handlers.Database.Close()
+	if storageImpl == nil && handlers.Flags.URLStorageFilePath != "" {
+		storageImpl, err = storage.NewFileStorage(handlers.Flags.URLStorageFilePath)
+		if err != nil {
+			logger.Sugar.Warn("Falling back to memory storage due to file error: ", err)
+		}
+	}
+	if storageImpl == nil {
+		storageImpl = storage.NewMemoryStorage()
+		logger.Sugar.Info("Using in-memory storage")
+	}
+	defer storageImpl.Close()
 
 	r := chi.NewRouter()
 	r.Use(logger.LoggingMiddleware)
 	r.Use(compress.CompressMiddleware)
 	r.Route("/", func(r chi.Router) {
-		r.Post("/", handlers.ShortenURLHandler)
+		r.Post("/", handlers.ShortenURLHandler(storageImpl))
 		r.Route("/{id}", func(r chi.Router) {
-			r.Get("/", handlers.RedirectHandler)
+			r.Get("/", handlers.RedirectHandler(storageImpl))
 		})
 	})
 	r.Route("/api", func(r chi.Router) {
-		r.Post("/shorten", handlers.APIShortenURLHandler)
+		r.Post("/shorten", handlers.APIShortenURLHandler(storageImpl))
 	})
-	r.Get("/ping", handlers.PingHandler)
+	r.Get("/ping", handlers.PingHandler(storageImpl))
 
 	logger.Sugar.Info("Starting server", zap.String("address", handlers.Flags.RunAddr))
 	log.Fatal(http.ListenAndServe(handlers.Flags.RunAddr, r))
