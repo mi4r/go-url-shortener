@@ -18,12 +18,12 @@ func (s *MemoryStorage) Save(url URL) error {
 	return nil
 }
 
-func (s *MemoryStorage) Get(shortURL string) (URL, error) {
+func (s *MemoryStorage) Get(shortURL string) (URL, bool) {
 	url, exists := s.data[shortURL]
 	if !exists {
-		return URL{}, nil
+		return URL{}, false
 	}
-	return url, nil
+	return url, true
 }
 
 func (s *MemoryStorage) GetNextID() (int, error) {

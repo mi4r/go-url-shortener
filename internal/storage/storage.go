@@ -2,7 +2,7 @@ package storage
 
 type Storage interface {
 	Save(url URL) error
-	Get(shortURL string) (URL, error)
+	Get(shortURL string) (URL, bool)
 	GetNextID() (int, error)
 	Close() error
 }

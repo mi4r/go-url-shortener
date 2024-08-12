@@ -21,16 +21,8 @@ const (
 )
 
 var (
-	// URLMap   = make(map[string]URL)
 	Flags *config.Flags
-	// Database *sql.DB
 )
-
-// type URL struct {
-// 	UUID        string `json:"uuid"`
-// 	ShortURL    string `json:"short_url"`
-// 	OriginalURL string `json:"original_url"`
-// }
 
 type ShortenRequest struct {
 	URL string `json:"url"`
@@ -39,49 +31,6 @@ type ShortenRequest struct {
 type ShortenResponse struct {
 	Result string `json:"result"`
 }
-
-// func SaveToFile(filePath string, url URL) error {
-// 	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	defer func() {
-// 		if err := file.Close(); err != nil {
-// 			logger.Sugar.Error(err)
-// 		}
-// 	}()
-
-// 	encoder := json.NewEncoder(file)
-// 	if err := encoder.Encode(url); err != nil {
-// 		return err
-// 	}
-// 	return nil
-// }
-
-// func LoadFromFile(filePath string) error {
-// 	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_RDONLY, 0666)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	defer func() {
-// 		if err := file.Close(); err != nil {
-// 			logger.Sugar.Error(err)
-// 		}
-// 	}()
-
-// 	decoder := json.NewDecoder(file)
-// 	for {
-// 		var url URL
-// 		if err := decoder.Decode(&url); err != nil {
-// 			if err == io.EOF {
-// 				break
-// 			}
-// 			return err
-// 		}
-// 		URLMap[url.ShortURL] = url
-// 	}
-// 	return nil
-// }
 
 func generateShortID() string {
 	b := make([]byte, idLength)
@@ -108,7 +57,7 @@ func ShortenURLHandler(storageImpl storage.Storage) http.HandlerFunc {
 		var shortID string
 		for {
 			shortID = generateShortID()
-			if _, err := storageImpl.Get(shortID); err != nil {
+			if _, exists := storageImpl.Get(shortID); !exists {
 				nextID, err := storageImpl.GetNextID()
 				if err != nil {
 					http.Error(w, "Failed to generate UUID", http.StatusInternalServerError)
@@ -128,7 +77,6 @@ func ShortenURLHandler(storageImpl storage.Storage) http.HandlerFunc {
 			}
 
 		}
-
 		shortURL := Flags.BaseShortAddr + "/" + shortID
 		w.WriteHeader(http.StatusCreated)
 		_, err = w.Write([]byte(shortURL))
@@ -159,7 +107,7 @@ func APIShortenURLHandler(storageImpl storage.Storage) http.HandlerFunc {
 		var shortID string
 		for {
 			shortID = generateShortID()
-			if _, err := storageImpl.Get(shortID); err != nil {
+			if _, exists := storageImpl.Get(shortID); !exists {
 				nextID, err := storageImpl.GetNextID()
 				if err != nil {
 					http.Error(w, "Failed to generate UUID", http.StatusInternalServerError)
@@ -202,15 +150,8 @@ func RedirectHandler(storageImpl storage.Storage) http.HandlerFunc {
 			return
 		}
 
-		// url, exists := URLMap[shortID]
-
-		// if !exists {
-		// 	http.Error(w, "Invalid request", http.StatusBadRequest)
-		// 	return
-		// }
-
-		url, err := storageImpl.Get(shortID)
-		if err != nil {
+		url, exists := storageImpl.Get(shortID)
+		if !exists {
 			http.Error(w, "Invalid request", http.StatusBadRequest)
 			return
 		}
@@ -221,11 +162,6 @@ func RedirectHandler(storageImpl storage.Storage) http.HandlerFunc {
 
 func PingHandler(storageImpl storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		// if err := Database.Ping(); err != nil {
-		// 	http.Error(w, "Connection to the database is not verified", http.StatusInternalServerError)
-		// 	logger.Sugar.Error("Connection to the database is not verified: ", zap.Error(err))
-		// 	return
-		// }
 		pinger, ok := storageImpl.(storage.Pinger)
 		if !ok {
 			http.Error(w, "Connection to the database is not verified", http.StatusInternalServerError)

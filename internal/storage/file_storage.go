@@ -34,12 +34,12 @@ func (s *FileStorage) Save(url URL) error {
 	return s.saveToFile(url)
 }
 
-func (s *FileStorage) Get(shortURL string) (URL, error) {
+func (s *FileStorage) Get(shortURL string) (URL, bool) {
 	url, exists := s.data[shortURL]
 	if !exists {
-		return URL{}, nil
+		return URL{}, false
 	}
-	return url, nil
+	return url, true
 }
 
 func (s *FileStorage) GetNextID() (int, error) {

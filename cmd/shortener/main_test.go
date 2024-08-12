@@ -14,6 +14,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/mi4r/go-url-shortener/cmd/config"
 	"github.com/mi4r/go-url-shortener/internal/handlers"
+	"github.com/mi4r/go-url-shortener/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -25,7 +26,7 @@ func TestRedirectHandler(t *testing.T) {
 	}
 	tests := []struct {
 		name          string
-		existedURLMap map[string]handlers.URL
+		existedURLMap map[string]storage.URL
 		shorten       string
 		method        string
 		want          want
@@ -34,7 +35,7 @@ func TestRedirectHandler(t *testing.T) {
 			name:          "success case",
 			method:        http.MethodGet,
 			shorten:       "/abc",
-			existedURLMap: map[string]handlers.URL{"abc": {ShortURL: "abc", OriginalURL: "http://example.com"}},
+			existedURLMap: map[string]storage.URL{"abc": {ShortURL: "abc", OriginalURL: "http://example.com"}},
 			want: want{
 				statusCode: http.StatusTemporaryRedirect,
 				origin:     "http://example.com",
@@ -44,7 +45,7 @@ func TestRedirectHandler(t *testing.T) {
 			name:          "invalid short ID",
 			method:        http.MethodGet,
 			shorten:       "/invalid",
-			existedURLMap: map[string]handlers.URL{"abc": {ShortURL: "abc", OriginalURL: "http://example.com"}},
+			existedURLMap: map[string]storage.URL{"abc": {ShortURL: "abc", OriginalURL: "http://example.com"}},
 			want: want{
 				statusCode: http.StatusBadRequest,
 				origin:     "",
@@ -63,13 +64,16 @@ func TestRedirectHandler(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			handlers.URLMap = tt.existedURLMap
+			storage := storage.NewMemoryStorage()
+			for _, url := range tt.existedURLMap {
+				_ = storage.Save(url)
+			}
 			req := httptest.NewRequest(tt.method, tt.shorten, nil)
 			rctx := chi.NewRouteContext()
 			rctx.URLParams.Add("id", strings.TrimPrefix(tt.shorten, "/"))
 			req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 			w := httptest.NewRecorder()
-			handler := http.HandlerFunc(handlers.RedirectHandler)
+			handler := http.HandlerFunc(handlers.RedirectHandler(storage))
 			handler.ServeHTTP(w, req)
 
 			res := w.Result()
@@ -89,7 +93,7 @@ func TestRedirectHandler(t *testing.T) {
 }
 
 func TestShortenURLHandler(t *testing.T) {
-	handlers.URLMap = make(map[string]handlers.URL)
+	storage := storage.NewMemoryStorage()
 	handlers.Flags = &config.Flags{
 		RunAddr:            "localhost:8080",
 		BaseShortAddr:      "http://localhost:8080",
@@ -140,7 +144,7 @@ func TestShortenURLHandler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			req := httptest.NewRequest(tt.method, "/", strings.NewReader(tt.originalURL))
 			w := httptest.NewRecorder()
-			handler := http.HandlerFunc(handlers.ShortenURLHandler)
+			handler := http.HandlerFunc(handlers.ShortenURLHandler(storage))
 			handler.ServeHTTP(w, req)
 
 			res := w.Result()
@@ -161,7 +165,7 @@ func TestShortenURLHandler(t *testing.T) {
 }
 
 func TestAPIShortenURLHandler(t *testing.T) {
-	handlers.URLMap = make(map[string]handlers.URL)
+	storage := storage.NewMemoryStorage()
 	handlers.Flags = &config.Flags{
 		RunAddr:            "localhost:8080",
 		BaseShortAddr:      "http://localhost:8080",
@@ -229,7 +233,7 @@ func TestAPIShortenURLHandler(t *testing.T) {
 			req.Header.Set("Content-Type", "application/json")
 
 			w := httptest.NewRecorder()
-			handler := http.HandlerFunc(handlers.APIShortenURLHandler)
+			handler := http.HandlerFunc(handlers.APIShortenURLHandler(storage))
 			handler.ServeHTTP(w, req)
 
 			res := w.Result()

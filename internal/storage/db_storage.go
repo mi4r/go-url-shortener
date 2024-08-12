@@ -37,16 +37,16 @@ func (s *DBStorage) Save(url URL) error {
 	return err
 }
 
-func (s *DBStorage) Get(shortURL string) (URL, error) {
+func (s *DBStorage) Get(shortURL string) (URL, bool) {
 	var url URL
 	err := s.Database.QueryRow("SELECT uuid, short_url, original_url FROM urls WHERE short_url = $1", shortURL).Scan(&url.UUID, &url.ShortURL, &url.OriginalURL)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return url, nil
+			return url, false
 		}
-		return url, err
+		return url, false
 	}
-	return url, nil
+	return url, true
 }
 
 func (s *DBStorage) GetNextID() (int, error) {
