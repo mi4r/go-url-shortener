@@ -37,6 +37,36 @@ func (s *DBStorage) Save(url URL) error {
 	return err
 }
 
+func (s *DBStorage) SaveBatch(urls []URL) ([]string, error) {
+	tx, err := s.Database.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.Prepare("INSERT INTO urls (original_url) VALUES ($1) RETURNING id")
+	if err != nil {
+		return nil, err
+	}
+	defer stmt.Close()
+
+	ids := make([]string, 0, len(urls))
+
+	for _, url := range urls {
+		var id string
+		if err := stmt.QueryRow(url.OriginalURL).Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	return ids, nil
+}
+
 func (s *DBStorage) Get(shortURL string) (URL, bool) {
 	var url URL
 	err := s.Database.QueryRow("SELECT uuid, short_url, original_url FROM urls WHERE short_url = $1", shortURL).Scan(&url.UUID, &url.ShortURL, &url.OriginalURL)

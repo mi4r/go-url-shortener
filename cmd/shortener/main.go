@@ -57,7 +57,10 @@ func main() {
 		})
 	})
 	r.Route("/api", func(r chi.Router) {
-		r.Post("/shorten", handlers.APIShortenURLHandler(storageImpl))
+		r.Route("/shorten", func(r chi.Router) {
+			r.Post("/", handlers.APIShortenURLHandler(storageImpl))
+			r.Post("/batch", handlers.BatchShortenURLHandler(storageImpl))
+		})
 	})
 	r.Get("/ping", handlers.PingHandler(storageImpl))
 

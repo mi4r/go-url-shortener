@@ -32,6 +32,16 @@ type ShortenResponse struct {
 	Result string `json:"result"`
 }
 
+type BatchRequestItem struct {
+	CorrelationID string `json:"correlation_id"`
+	OriginalURL   string `json:"original_url"`
+}
+
+type BatchResponseItem struct {
+	CorrelationID string `json:"correlation_id"`
+	ShortURL      string `json:"short_url"`
+}
+
 func generateShortID() string {
 	b := make([]byte, idLength)
 	for i := range b {
@@ -138,6 +148,47 @@ func APIShortenURLHandler(storageImpl storage.Storage) http.HandlerFunc {
 		if err := json.NewEncoder(w).Encode(responseBody); err != nil {
 			http.Error(w, "Failed to write response", http.StatusBadRequest)
 			logger.Sugar.Error("Failed to write response", zap.Error(err))
+		}
+	}
+}
+
+func BatchShortenURLHandler(storageImpl storage.Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var batchRequest []BatchRequestItem
+
+		if err := json.NewDecoder(r.Body).Decode(&batchRequest); err != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		if len(batchRequest) == 0 {
+			http.Error(w, "Batch cannot be empty", http.StatusBadRequest)
+			return
+		}
+
+		urls := make([]storage.URL, len(batchRequest))
+		for i, item := range batchRequest {
+			urls[i] = storage.URL{OriginalURL: item.OriginalURL}
+		}
+
+		shortIDs, err := storageImpl.SaveBatch(urls)
+		if err != nil {
+			http.Error(w, "Failed to save URL batch", http.StatusInternalServerError)
+			return
+		}
+
+		batchResponse := make([]BatchResponseItem, len(batchRequest))
+		for i, shortID := range shortIDs {
+			batchResponse[i] = BatchResponseItem{
+				CorrelationID: batchRequest[i].CorrelationID,
+				ShortURL:      Flags.BaseShortAddr + "/" + shortID,
+			}
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		if err := json.NewEncoder(w).Encode(batchResponse); err != nil {
+			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 		}
 	}
 }
