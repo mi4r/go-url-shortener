@@ -66,7 +66,7 @@ func TestRedirectHandler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			storage := storage.NewMemoryStorage()
 			for _, url := range tt.existedURLMap {
-				_ = storage.Save(url)
+				_, _ = storage.Save(url)
 			}
 			req := httptest.NewRequest(tt.method, tt.shorten, nil)
 			rctx := chi.NewRouteContext()
