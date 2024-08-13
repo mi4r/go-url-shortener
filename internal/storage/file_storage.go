@@ -29,28 +29,28 @@ func NewFileStorage(filePath string) (*FileStorage, error) {
 	return fs, nil
 }
 
-func (s *FileStorage) Save(url URL) error {
+func (s *FileStorage) Save(url URL) (string, error) {
 	s.data[url.ShortURL] = url
 	s.nextID++
-	return s.saveToFile(url)
+	return "", s.saveToFile(url)
 }
 
-func (s *FileStorage) SaveBatch(urls []URL) ([]string, error) {
-	ids := make([]string, 0, len(urls))
+// func (s *FileStorage) SaveBatch(urls []URL) ([]string, error) {
+// 	ids := make([]string, 0, len(urls))
 
-	for _, url := range urls {
-		shortID := generateShortID()
-		s.data[shortID] = url
-		s.nextID++
-		ids = append(ids, shortID)
-	}
+// 	for _, url := range urls {
+// 		shortID := generateShortID()
+// 		s.data[shortID] = url
+// 		s.nextID++
+// 		ids = append(ids, shortID)
+// 	}
 
-	if err := s.saveFewURLsToFile(); err != nil {
-		return nil, err
-	}
+// 	if err := s.saveFewURLsToFile(); err != nil {
+// 		return nil, err
+// 	}
 
-	return ids, nil
-}
+// 	return ids, nil
+// }
 
 func (s *FileStorage) Get(shortURL string) (URL, bool) {
 	url, exists := s.data[shortURL]

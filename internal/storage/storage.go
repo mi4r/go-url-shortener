@@ -8,8 +8,8 @@ const (
 )
 
 type Storage interface {
-	Save(url URL) error
-	SaveBatch(urls []URL) ([]string, error)
+	Save(url URL) (string, error)
+	// SaveBatch(urls []URL) ([]string, error)
 	Get(shortURL string) (URL, bool)
 	GetNextID() (int, error)
 	Close() error
