@@ -14,6 +14,28 @@ type DBStorage struct {
 	Database *sql.DB
 }
 
+func MigrateDB(db *sql.DB) error {
+	// Удаление дубликатов
+	_, err := db.Exec(`
+        DELETE FROM urls
+        WHERE id NOT IN (
+            SELECT MIN(id)
+            FROM urls
+            GROUP BY original_url
+        );
+    `)
+	if err != nil {
+		return err
+	}
+
+	// Добавление уникального индекса
+	_, err = db.Exec(`
+        CREATE UNIQUE INDEX IF NOT EXISTS unique_original_url_idx
+        ON urls (original_url);
+    `)
+	return err
+}
+
 func NewDBStorage(dsn string) (*DBStorage, error) {
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
@@ -28,6 +50,10 @@ func NewDBStorage(dsn string) (*DBStorage, error) {
         original_url TEXT NOT NULL UNIQUE
     );`
 	_, err = db.Exec(query)
+	if err != nil {
+		return nil, err
+	}
+	err = MigrateDB(db)
 	if err != nil {
 		return nil, err
 	}
