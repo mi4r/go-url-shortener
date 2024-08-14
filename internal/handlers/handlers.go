@@ -179,46 +179,46 @@ func APIShortenURLHandler(storageImpl storage.Storage) http.HandlerFunc {
 	}
 }
 
-// func BatchShortenURLHandler(storageImpl storage.Storage) http.HandlerFunc {
-// 	return func(w http.ResponseWriter, r *http.Request) {
-// 		var batchRequest []BatchRequestItem
+func BatchShortenURLHandler(storageImpl storage.Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var batchRequest []BatchRequestItem
 
-// 		if err := json.NewDecoder(r.Body).Decode(&batchRequest); err != nil {
-// 			http.Error(w, "Invalid request body", http.StatusBadRequest)
-// 			return
-// 		}
+		if err := json.NewDecoder(r.Body).Decode(&batchRequest); err != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
 
-// 		if len(batchRequest) == 0 {
-// 			http.Error(w, "Batch cannot be empty", http.StatusBadRequest)
-// 			return
-// 		}
+		if len(batchRequest) == 0 {
+			http.Error(w, "Batch cannot be empty", http.StatusBadRequest)
+			return
+		}
 
-// 		urls := make([]storage.URL, len(batchRequest))
-// 		for i, item := range batchRequest {
-// 			urls[i] = storage.URL{OriginalURL: item.OriginalURL}
-// 		}
+		urls := make([]storage.URL, len(batchRequest))
+		for i, item := range batchRequest {
+			urls[i] = storage.URL{UUID: item.CorrelationID, OriginalURL: item.OriginalURL}
+		}
 
-// 		shortIDs, err := storageImpl.SaveBatch(urls)
-// 		if err != nil {
-// 			http.Error(w, "Failed to save URL batch", http.StatusInternalServerError)
-// 			return
-// 		}
+		shortIDs, err := storageImpl.SaveBatch(urls)
+		if err != nil {
+			http.Error(w, "Failed to save URL batch", http.StatusInternalServerError)
+			return
+		}
 
-// 		batchResponse := make([]BatchResponseItem, len(batchRequest))
-// 		for i, shortID := range shortIDs {
-// 			batchResponse[i] = BatchResponseItem{
-// 				CorrelationID: batchRequest[i].CorrelationID,
-// 				ShortURL:      Flags.BaseShortAddr + "/" + shortID,
-// 			}
-// 		}
+		batchResponse := make([]BatchResponseItem, len(batchRequest))
+		for i, shortID := range shortIDs {
+			batchResponse[i] = BatchResponseItem{
+				CorrelationID: batchRequest[i].CorrelationID,
+				ShortURL:      Flags.BaseShortAddr + "/" + shortID,
+			}
+		}
 
-// 		w.Header().Set("Content-Type", "application/json")
-// 		w.WriteHeader(http.StatusCreated)
-// 		if err := json.NewEncoder(w).Encode(batchResponse); err != nil {
-// 			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-// 		}
-// 	}
-// }
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		if err := json.NewEncoder(w).Encode(batchResponse); err != nil {
+			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		}
+	}
+}
 
 func RedirectHandler(storageImpl storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {

@@ -78,36 +78,36 @@ func (s *DBStorage) Save(url URL) (string, error) {
 	return "", nil
 }
 
-// func (s *DBStorage) SaveBatch(urls []URL) ([]string, error) {
-// 	tx, err := s.Database.Begin()
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	defer tx.Rollback()
+func (s *DBStorage) SaveBatch(urls []URL) ([]string, error) {
+	tx, err := s.Database.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
 
-// 	stmt, err := tx.Prepare("INSERT INTO urls (uuid, short_url, original_url) VALUES ($1, $2, $3) RETURNING id;")
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	defer stmt.Close()
+	stmt, err := tx.Prepare("INSERT INTO urls (uuid, short_url, original_url) VALUES ($1, $2, $3);")
+	if err != nil {
+		return nil, err
+	}
+	defer stmt.Close()
 
-// 	ids := make([]string, 0, len(urls))
+	ids := make([]string, 0, len(urls))
 
-// 	for _, url := range urls {
-// 		var id string
-// 		shortID := generateShortID()
-// 		if err := stmt.QueryRow(url.OriginalURL).Scan(&id); err != nil {
-// 			return nil, err
-// 		}
-// 		ids = append(ids, id)
-// 	}
+	for i := range urls {
+		shortID := generateShortID()
+		urls[i].ShortURL = shortID
+		if _, err := stmt.Exec(urls[i].UUID, urls[i].ShortURL, urls[i].OriginalURL); err != nil {
+			return nil, err
+		}
+		ids = append(ids, shortID)
+	}
 
-// 	if err := tx.Commit(); err != nil {
-// 		return nil, err
-// 	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
 
-// 	return ids, nil
-// }
+	return ids, nil
+}
 
 func (s *DBStorage) Get(shortURL string) (URL, bool) {
 	var url URL

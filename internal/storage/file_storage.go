@@ -3,7 +3,6 @@ package storage
 import (
 	"encoding/json"
 	"io"
-	"io/ioutil"
 	"os"
 	"strconv"
 
@@ -35,22 +34,23 @@ func (s *FileStorage) Save(url URL) (string, error) {
 	return "", s.saveToFile(url)
 }
 
-// func (s *FileStorage) SaveBatch(urls []URL) ([]string, error) {
-// 	ids := make([]string, 0, len(urls))
+func (s *FileStorage) SaveBatch(urls []URL) ([]string, error) {
+	ids := make([]string, 0, len(urls))
 
-// 	for _, url := range urls {
-// 		shortID := generateShortID()
-// 		s.data[shortID] = url
-// 		s.nextID++
-// 		ids = append(ids, shortID)
-// 	}
+	for i := range urls {
+		shortID := generateShortID()
+		urls[i].ShortURL = shortID
+		s.data[shortID] = urls[i]
+		s.nextID++
+		ids = append(ids, shortID)
+	}
 
-// 	if err := s.saveFewURLsToFile(); err != nil {
-// 		return nil, err
-// 	}
+	if err := s.saveBatchToFile(urls); err != nil {
+		return nil, err
+	}
 
-// 	return ids, nil
-// }
+	return ids, nil
+}
 
 func (s *FileStorage) Get(shortURL string) (URL, bool) {
 	url, exists := s.data[shortURL]
@@ -83,13 +83,25 @@ func (s *FileStorage) saveToFile(url URL) error {
 	return encoder.Encode(url)
 }
 
-func (s *FileStorage) saveFewURLsToFile() error {
-	data, err := json.Marshal(s.data)
+func (s *FileStorage) saveBatchToFile(batch []URL) error {
+	file, err := os.OpenFile(s.filePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
 	if err != nil {
 		return err
 	}
+	defer func() {
+		if err := file.Close(); err != nil {
+			logger.Sugar.Error(err)
+		}
+	}()
 
-	return ioutil.WriteFile(s.filePath, data, 0666)
+	encoder := json.NewEncoder(file)
+	return encoder.Encode(batch)
+	// data, err := json.Marshal(s.data)
+	// if err != nil {
+	// 	return err
+	// }
+
+	// return os.WriteFile(s.filePath, data, 0666)
 }
 
 func (s *FileStorage) loadFromFile() error {

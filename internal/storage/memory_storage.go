@@ -18,18 +18,19 @@ func (s *MemoryStorage) Save(url URL) (string, error) {
 	return "", nil
 }
 
-// func (s *MemoryStorage) SaveBatch(urls []URL) ([]string, error) {
-// 	ids := make([]string, 0, len(urls))
+func (s *MemoryStorage) SaveBatch(urls []URL) ([]string, error) {
+	ids := make([]string, 0, len(urls))
 
-// 	for _, url := range urls {
-// 		shortID := generateShortID()
-// 		s.data[shortID] = url
-// 		s.nextID++
-// 		ids = append(ids, shortID)
-// 	}
+	for i := range urls {
+		shortID := generateShortID()
+		urls[i].ShortURL = shortID
+		s.data[shortID] = urls[i]
+		s.nextID++
+		ids = append(ids, shortID)
+	}
 
-// 	return ids, nil
-// }
+	return ids, nil
+}
 
 func (s *MemoryStorage) Get(shortURL string) (URL, bool) {
 	url, exists := s.data[shortURL]
