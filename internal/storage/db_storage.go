@@ -98,7 +98,7 @@ func (s *DBStorage) SaveBatch(urls []URL) ([]string, error) {
 		var shortID string
 		for {
 			shortID = generateShortID()
-			if err := s.checkUniqueShortID(tx, shortID); err == nil {
+			if err := checkUniqueShortID(tx, shortID); err == nil {
 				break
 			}
 		}
@@ -144,7 +144,7 @@ func (s *DBStorage) Ping() error {
 }
 
 // Функция для проверки уникальности shortID
-func (s *DBStorage) checkUniqueShortID(tx *sql.Tx, shortID string) error {
+func checkUniqueShortID(tx *sql.Tx, shortID string) error {
 	var exists bool
 	err := tx.QueryRow("SELECT EXISTS(SELECT 1 FROM urls WHERE short_url = $1)", shortID).Scan(&exists)
 	if err != nil {
