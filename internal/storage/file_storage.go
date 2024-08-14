@@ -96,12 +96,6 @@ func (s *FileStorage) saveBatchToFile(batch []URL) error {
 
 	encoder := json.NewEncoder(file)
 	return encoder.Encode(batch)
-	// data, err := json.Marshal(s.data)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// return os.WriteFile(s.filePath, data, 0666)
 }
 
 func (s *FileStorage) loadFromFile() error {
@@ -125,7 +119,7 @@ func (s *FileStorage) loadFromFile() error {
 			return err
 		}
 		s.data[url.ShortURL] = url
-		if urlID, _ := strconv.Atoi(url.UUID); urlID >= s.nextID {
+		if urlID, _ := strconv.Atoi(url.CorrelationID); urlID >= s.nextID {
 			s.nextID = urlID + 1
 		}
 	}

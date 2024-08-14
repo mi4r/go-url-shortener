@@ -74,9 +74,9 @@ func ShortenURLHandler(storageImpl storage.Storage) http.HandlerFunc {
 					return
 				}
 				url := storage.URL{
-					UUID:        strconv.Itoa(nextID),
-					ShortURL:    shortID,
-					OriginalURL: originalURL,
+					CorrelationID: strconv.Itoa(nextID),
+					ShortURL:      shortID,
+					OriginalURL:   originalURL,
 				}
 				existingURL, err := storageImpl.Save(url)
 				if err != nil {
@@ -135,9 +135,9 @@ func APIShortenURLHandler(storageImpl storage.Storage) http.HandlerFunc {
 					return
 				}
 				url := storage.URL{
-					UUID:        strconv.Itoa(nextID),
-					ShortURL:    shortID,
-					OriginalURL: originalURL,
+					CorrelationID: strconv.Itoa(nextID),
+					ShortURL:      shortID,
+					OriginalURL:   originalURL,
 				}
 				existingURL, err := storageImpl.Save(url)
 				if err != nil {
@@ -180,10 +180,21 @@ func APIShortenURLHandler(storageImpl storage.Storage) http.HandlerFunc {
 }
 
 func BatchShortenURLHandler(storageImpl storage.Storage) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, req *http.Request) {
+		if req.Method != http.MethodPost {
+			http.Error(w, "Invalid request method", http.StatusBadRequest)
+			return
+		}
+
 		var batchRequest []BatchRequestItem
 
-		if err := json.NewDecoder(r.Body).Decode(&batchRequest); err != nil {
+		reqBody, err := io.ReadAll(req.Body)
+		if err != nil {
+			http.Error(w, "Failed to read request body", http.StatusInternalServerError)
+			return
+		}
+
+		if err = json.Unmarshal(reqBody, &batchRequest); err != nil {
 			http.Error(w, "Invalid request body", http.StatusBadRequest)
 			return
 		}
@@ -192,17 +203,20 @@ func BatchShortenURLHandler(storageImpl storage.Storage) http.HandlerFunc {
 			http.Error(w, "Batch cannot be empty", http.StatusBadRequest)
 			return
 		}
+		logger.Sugar.Info("111 %v", batchRequest)
 
 		urls := make([]storage.URL, len(batchRequest))
 		for i, item := range batchRequest {
-			urls[i] = storage.URL{UUID: item.CorrelationID, OriginalURL: item.OriginalURL}
+			urls[i] = storage.URL{CorrelationID: item.CorrelationID, OriginalURL: item.OriginalURL}
 		}
 
 		shortIDs, err := storageImpl.SaveBatch(urls)
 		if err != nil {
 			http.Error(w, "Failed to save URL batch", http.StatusInternalServerError)
+			logger.Sugar.Error("Failed to save URL batch: ", zap.Error(err))
 			return
 		}
+		logger.Sugar.Info("222 %v", shortIDs)
 
 		batchResponse := make([]BatchResponseItem, len(batchRequest))
 		for i, shortID := range shortIDs {
@@ -212,10 +226,13 @@ func BatchShortenURLHandler(storageImpl storage.Storage) http.HandlerFunc {
 			}
 		}
 
+		logger.Sugar.Info("333 %v", batchResponse)
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
 		if err := json.NewEncoder(w).Encode(batchResponse); err != nil {
 			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+			logger.Sugar.Error("Failed to encode response: ", zap.Error(err))
 		}
 	}
 }

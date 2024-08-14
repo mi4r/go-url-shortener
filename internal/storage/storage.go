@@ -20,9 +20,9 @@ type Pinger interface {
 }
 
 type URL struct {
-	UUID        string `json:"uuid"`
-	ShortURL    string `json:"short_url"`
-	OriginalURL string `json:"original_url"`
+	CorrelationID string `json:"correlation_id"`
+	ShortURL      string `json:"short_url"`
+	OriginalURL   string `json:"original_url"`
 }
 
 func generateShortID() string {

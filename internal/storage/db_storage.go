@@ -3,6 +3,7 @@ package storage
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -62,7 +63,7 @@ func NewDBStorage(dsn string) (*DBStorage, error) {
 }
 
 func (s *DBStorage) Save(url URL) (string, error) {
-	_, err := s.Database.Exec("INSERT INTO urls (uuid, short_url, original_url) VALUES ($1, $2, $3);", url.UUID, url.ShortURL, url.OriginalURL)
+	_, err := s.Database.Exec("INSERT INTO urls (correlation_id, short_url, original_url) VALUES ($1, $2, $3);", url.CorrelationID, url.ShortURL, url.OriginalURL)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
@@ -84,23 +85,30 @@ func (s *DBStorage) SaveBatch(urls []URL) ([]string, error) {
 		return nil, err
 	}
 	defer tx.Rollback()
-
-	stmt, err := tx.Prepare("INSERT INTO urls (uuid, short_url, original_url) VALUES ($1, $2, $3);")
+	fmt.Println("1")
+	stmt, err := tx.Prepare("INSERT INTO urls (correlation_id, short_url, original_url) VALUES ($1, $2, $3);")
 	if err != nil {
 		return nil, err
 	}
 	defer stmt.Close()
-
+	fmt.Println("2")
 	ids := make([]string, 0, len(urls))
 
-	for i := range urls {
-		shortID := generateShortID()
-		urls[i].ShortURL = shortID
-		if _, err := stmt.Exec(urls[i].UUID, urls[i].ShortURL, urls[i].OriginalURL); err != nil {
+	for _, url := range urls {
+		var shortID string
+		for {
+			shortID = generateShortID()
+			if err := s.checkUniqueShortID(tx, shortID); err == nil {
+				break
+			}
+		}
+		fmt.Println(url)
+		if _, err := stmt.Exec(url.CorrelationID, shortID, url.OriginalURL); err != nil {
 			return nil, err
 		}
 		ids = append(ids, shortID)
 	}
+	fmt.Println("3")
 
 	if err := tx.Commit(); err != nil {
 		return nil, err
@@ -111,7 +119,7 @@ func (s *DBStorage) SaveBatch(urls []URL) ([]string, error) {
 
 func (s *DBStorage) Get(shortURL string) (URL, bool) {
 	var url URL
-	err := s.Database.QueryRow("SELECT uuid, short_url, original_url FROM urls WHERE short_url = $1;", shortURL).Scan(&url.UUID, &url.ShortURL, &url.OriginalURL)
+	err := s.Database.QueryRow("SELECT correlation_id, short_url, original_url FROM urls WHERE short_url = $1;", shortURL).Scan(&url.CorrelationID, &url.ShortURL, &url.OriginalURL)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return url, false
@@ -134,3 +142,25 @@ func (s *DBStorage) Close() error {
 func (s *DBStorage) Ping() error {
 	return s.Database.Ping()
 }
+
+// Функция для проверки уникальности shortID
+func (s *DBStorage) checkUniqueShortID(tx *sql.Tx, shortID string) error {
+	var exists bool
+	err := tx.QueryRow("SELECT EXISTS(SELECT 1 FROM urls WHERE short_url = $1)", shortID).Scan(&exists)
+	if err != nil {
+		return err
+	}
+	if exists {
+		return fmt.Errorf("duplicate key value violates unique constraint")
+	}
+	return nil
+}
+
+// // Функция для определения ошибки уникальности
+// func isUniqueViolationError(err error) bool {
+// 	// Проверяем ошибку на наличие SQLSTATE 23505 (нарушение уникальности)
+// 	if pgErr, ok := err.(*pq.Error); ok && pgErr.Code == "23505" {
+// 		return true
+// 	}
+// 	return false
+// }
