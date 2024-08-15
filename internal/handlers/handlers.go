@@ -203,7 +203,6 @@ func BatchShortenURLHandler(storageImpl storage.Storage) http.HandlerFunc {
 			http.Error(w, "Batch cannot be empty", http.StatusBadRequest)
 			return
 		}
-		logger.Sugar.Info("111 %v", batchRequest)
 
 		urls := make([]storage.URL, len(batchRequest))
 		for i, item := range batchRequest {
@@ -216,7 +215,6 @@ func BatchShortenURLHandler(storageImpl storage.Storage) http.HandlerFunc {
 			logger.Sugar.Error("Failed to save URL batch: ", zap.Error(err))
 			return
 		}
-		logger.Sugar.Info("222 %v", shortIDs)
 
 		batchResponse := make([]BatchResponseItem, len(batchRequest))
 		for i, shortID := range shortIDs {
@@ -225,8 +223,6 @@ func BatchShortenURLHandler(storageImpl storage.Storage) http.HandlerFunc {
 				ShortURL:      Flags.BaseShortAddr + "/" + shortID,
 			}
 		}
-
-		logger.Sugar.Info("333 %v", batchResponse)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
