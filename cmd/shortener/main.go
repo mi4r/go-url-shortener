@@ -21,7 +21,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("can't initialize zap logger: %v", err)
 	}
-	defer lgr.Sync()
+	defer func() {
+		if err := lgr.Sync(); err != nil {
+			logger.Sugar.Error(err)
+		}
+	}()
 
 	logger.Sugar = *lgr.Sugar()
 

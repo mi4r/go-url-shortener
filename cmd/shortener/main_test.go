@@ -310,13 +310,10 @@ func TestBatchShortenURLHandler_Success(t *testing.T) {
 	}
 	var reqBody []byte
 	var err error
-	if batchRequest != nil {
-		reqBody, err = json.Marshal(batchRequest)
-		if err != nil {
-			t.Fatalf("Failed to marshal request body: %v", err)
-		}
-	} else {
-		reqBody = []byte("invalid json")
+
+	reqBody, err = json.Marshal(batchRequest)
+	if err != nil {
+		t.Fatalf("Failed to marshal request body: %v", err)
 	}
 
 	mockStorage.On("SaveBatch", mock.Anything).Return([]string{"abc123", "def456"}, nil)
