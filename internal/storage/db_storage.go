@@ -85,13 +85,13 @@ func (s *DBStorage) SaveBatch(urls []URL) ([]string, error) {
 		return nil, err
 	}
 	defer tx.Rollback()
-	fmt.Println("1")
+
 	stmt, err := tx.Prepare("INSERT INTO urls (correlation_id, short_url, original_url) VALUES ($1, $2, $3);")
 	if err != nil {
 		return nil, err
 	}
 	defer stmt.Close()
-	fmt.Println("2")
+
 	ids := make([]string, 0, len(urls))
 
 	for _, url := range urls {
@@ -108,7 +108,6 @@ func (s *DBStorage) SaveBatch(urls []URL) ([]string, error) {
 		}
 		ids = append(ids, shortID)
 	}
-	fmt.Println("3")
 
 	if err := tx.Commit(); err != nil {
 		return nil, err
@@ -143,7 +142,6 @@ func (s *DBStorage) Ping() error {
 	return s.Database.Ping()
 }
 
-// Функция для проверки уникальности shortID
 func checkUniqueShortID(tx *sql.Tx, shortID string) error {
 	var exists bool
 	err := tx.QueryRow("SELECT EXISTS(SELECT 1 FROM urls WHERE short_url = $1)", shortID).Scan(&exists)
@@ -155,12 +153,3 @@ func checkUniqueShortID(tx *sql.Tx, shortID string) error {
 	}
 	return nil
 }
-
-// // Функция для определения ошибки уникальности
-// func isUniqueViolationError(err error) bool {
-// 	// Проверяем ошибку на наличие SQLSTATE 23505 (нарушение уникальности)
-// 	if pgErr, ok := err.(*pq.Error); ok && pgErr.Code == "23505" {
-// 		return true
-// 	}
-// 	return false
-// }
