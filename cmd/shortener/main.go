@@ -65,9 +65,6 @@ func main() {
 			r.Post("/", handlers.APIShortenURLHandler(storageImpl))
 			r.Post("/batch", handlers.BatchShortenURLHandler(storageImpl))
 		})
-		r.Route("/user", func(r chi.Router) {
-			r.Get("/urls", handlers.UserURLsHandler(storageImpl))
-		})
 	})
 	r.Get("/ping", handlers.PingHandler(storageImpl))
 

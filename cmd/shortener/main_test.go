@@ -268,12 +268,6 @@ type MockStorage struct {
 	mock.Mock
 }
 
-// GetURLsByUserID implements storage.Storage.
-func (m *MockStorage) GetURLsByUserID(userID string) ([]storage.URL, error) {
-	args := m.Called(userID)
-	return args.Get(0).([]storage.URL), args.Error(1)
-}
-
 func (m *MockStorage) Close() error {
 	args := m.Called()
 	return args.Error(0)

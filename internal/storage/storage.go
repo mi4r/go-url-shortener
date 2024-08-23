@@ -11,7 +11,6 @@ type Storage interface {
 	Save(url URL) (string, error)
 	SaveBatch(urls []URL) ([]string, error)
 	Get(shortURL string) (URL, bool)
-	GetURLsByUserID(userID string) ([]URL, error)
 	GetNextID() (int, error)
 	Close() error
 }
@@ -24,7 +23,6 @@ type URL struct {
 	CorrelationID string `json:"correlation_id"`
 	ShortURL      string `json:"short_url"`
 	OriginalURL   string `json:"original_url"`
-	UserID        string `json:"user_id"`
 }
 
 func generateShortID() string {

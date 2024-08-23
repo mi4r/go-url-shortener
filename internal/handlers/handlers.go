@@ -11,7 +11,6 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/exp/rand"
 
-	"github.com/mi4r/go-url-shortener/internal/auth"
 	"github.com/mi4r/go-url-shortener/internal/logger"
 	"github.com/mi4r/go-url-shortener/internal/storage"
 )
@@ -43,11 +42,6 @@ type BatchResponseItem struct {
 	ShortURL      string `json:"short_url"`
 }
 
-type URLResponseItem struct {
-	ShortURL    string `json:"short_url"`
-	OriginalURL string `json:"original_url"`
-}
-
 func generateShortID() string {
 	b := make([]byte, idLength)
 	for i := range b {
@@ -61,12 +55,6 @@ func ShortenURLHandler(storageImpl storage.Storage) http.HandlerFunc {
 		if req.Method != http.MethodPost {
 			http.Error(w, "Invalid request method", http.StatusBadRequest)
 			return
-		}
-
-		userID, valid := auth.ValidateUserCookie(req)
-		if !valid {
-			userID = auth.GenerateUserID()
-			auth.SetUserCookie(w, userID)
 		}
 
 		body, err := io.ReadAll(req.Body)
@@ -89,7 +77,6 @@ func ShortenURLHandler(storageImpl storage.Storage) http.HandlerFunc {
 					CorrelationID: strconv.Itoa(nextID),
 					ShortURL:      shortID,
 					OriginalURL:   originalURL,
-					UserID:        userID,
 				}
 				existingURL, err := storageImpl.Save(url)
 				if err != nil {
@@ -128,12 +115,6 @@ func APIShortenURLHandler(storageImpl storage.Storage) http.HandlerFunc {
 			return
 		}
 
-		userID, valid := auth.ValidateUserCookie(req)
-		if !valid {
-			userID = auth.GenerateUserID()
-			auth.SetUserCookie(w, userID)
-		}
-
 		var requestBody ShortenRequest
 
 		decoder := json.NewDecoder(req.Body)
@@ -157,7 +138,6 @@ func APIShortenURLHandler(storageImpl storage.Storage) http.HandlerFunc {
 					CorrelationID: strconv.Itoa(nextID),
 					ShortURL:      shortID,
 					OriginalURL:   originalURL,
-					UserID:        userID,
 				}
 				existingURL, err := storageImpl.Save(url)
 				if err != nil {
@@ -206,12 +186,6 @@ func BatchShortenURLHandler(storageImpl storage.Storage) http.HandlerFunc {
 			return
 		}
 
-		userID, valid := auth.ValidateUserCookie(req)
-		if !valid {
-			userID = auth.GenerateUserID()
-			auth.SetUserCookie(w, userID)
-		}
-
 		var batchRequest []BatchRequestItem
 
 		reqBody, err := io.ReadAll(req.Body)
@@ -232,7 +206,7 @@ func BatchShortenURLHandler(storageImpl storage.Storage) http.HandlerFunc {
 
 		urls := make([]storage.URL, len(batchRequest))
 		for i, item := range batchRequest {
-			urls[i] = storage.URL{CorrelationID: item.CorrelationID, OriginalURL: item.OriginalURL, UserID: userID}
+			urls[i] = storage.URL{CorrelationID: item.CorrelationID, OriginalURL: item.OriginalURL}
 		}
 
 		shortIDs, err := storageImpl.SaveBatch(urls)
@@ -292,46 +266,5 @@ func PingHandler(storageImpl storage.Storage) http.HandlerFunc {
 		}
 
 		w.WriteHeader(http.StatusOK)
-	}
-}
-
-// UserURLsHandler возвращает все URL, сокращенные текущим пользователем.
-func UserURLsHandler(storageImpl storage.Storage) http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) {
-		// Проверяем подлинность куки
-		userID, valid := auth.ValidateUserCookie(req)
-		if !valid {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
-
-		// Получаем URL'ы пользователя из хранилища
-		urls, err := storageImpl.GetURLsByUserID(userID)
-		if err != nil {
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
-
-		// Проверяем, есть ли сокращенные URL'ы
-		if len(urls) == 0 {
-			w.WriteHeader(http.StatusNoContent)
-			return
-		}
-
-		// Формируем ответ
-		response := make([]URLResponseItem, len(urls))
-		for i, url := range urls {
-			response[i] = URLResponseItem{
-				ShortURL:    Flags.BaseShortAddr + "/" + url.ShortURL,
-				OriginalURL: url.OriginalURL,
-			}
-		}
-
-		// Отправляем ответ
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(response); err != nil {
-			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-			return
-		}
 	}
 }
