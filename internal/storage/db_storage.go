@@ -49,7 +49,9 @@ func NewDBStorage(dsn string) (*DBStorage, error) {
         correlation_id VARCHAR(255) NOT NULL,
         short_url VARCHAR(255) NOT NULL UNIQUE,
         original_url TEXT NOT NULL UNIQUE
-    );`
+    );
+	ALTER TABLE urls ADD COLUMN user_id VARCHAR(255);
+	`
 	_, err = db.Exec(query)
 	if err != nil {
 		return nil, err
@@ -63,7 +65,8 @@ func NewDBStorage(dsn string) (*DBStorage, error) {
 }
 
 func (s *DBStorage) Save(url URL) (string, error) {
-	_, err := s.Database.Exec("INSERT INTO urls (correlation_id, short_url, original_url) VALUES ($1, $2, $3);", url.CorrelationID, url.ShortURL, url.OriginalURL)
+	_, err := s.Database.Exec("INSERT INTO urls (correlation_id, short_url, original_url, user_id) VALUES ($1, $2, $3, $4);",
+		url.CorrelationID, url.ShortURL, url.OriginalURL, url.UserID)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
@@ -86,7 +89,7 @@ func (s *DBStorage) SaveBatch(urls []URL) ([]string, error) {
 	}
 	defer tx.Rollback()
 
-	stmt, err := tx.Prepare("INSERT INTO urls (correlation_id, short_url, original_url) VALUES ($1, $2, $3);")
+	stmt, err := tx.Prepare("INSERT INTO urls (correlation_id, short_url, original_url, user_id) VALUES ($1, $2, $3, $4);")
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +106,7 @@ func (s *DBStorage) SaveBatch(urls []URL) ([]string, error) {
 			}
 		}
 		fmt.Println(url)
-		if _, err := stmt.Exec(url.CorrelationID, shortID, url.OriginalURL); err != nil {
+		if _, err := stmt.Exec(url.CorrelationID, shortID, url.OriginalURL, url.UserID); err != nil {
 			return nil, err
 		}
 		ids = append(ids, shortID)
@@ -126,6 +129,24 @@ func (s *DBStorage) Get(shortURL string) (URL, bool) {
 		return url, false
 	}
 	return url, true
+}
+
+func (s *DBStorage) GetURLsByUserID(userID string) ([]URL, error) {
+	rows, err := s.Database.Query("SELECT short_url, original_url FROM urls WHERE user_id = $1", userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var urls []URL
+	for rows.Next() {
+		var url URL
+		if err := rows.Scan(&url.ShortURL, &url.OriginalURL); err != nil {
+			return nil, err
+		}
+		urls = append(urls, url)
+	}
+	return urls, nil
 }
 
 func (s *DBStorage) GetNextID() (int, error) {
