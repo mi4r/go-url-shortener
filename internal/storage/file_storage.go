@@ -12,6 +12,7 @@ import (
 type FileStorage struct {
 	filePath string
 	data     map[string]URL
+	userURLs map[string][]string
 	nextID   int
 }
 
@@ -19,6 +20,7 @@ func NewFileStorage(filePath string) (*FileStorage, error) {
 	fs := &FileStorage{
 		filePath: filePath,
 		data:     make(map[string]URL),
+		userURLs: make(map[string][]string),
 		nextID:   1,
 	}
 	err := fs.loadFromFile()
@@ -30,6 +32,7 @@ func NewFileStorage(filePath string) (*FileStorage, error) {
 
 func (s *FileStorage) Save(url URL) (string, error) {
 	s.data[url.ShortURL] = url
+	s.userURLs[url.UserID] = append(s.userURLs[url.UserID], url.ShortURL)
 	s.nextID++
 	return "", s.saveToFile(url)
 }
@@ -41,6 +44,7 @@ func (s *FileStorage) SaveBatch(urls []URL) ([]string, error) {
 		shortID := generateShortID()
 		urls[i].ShortURL = shortID
 		s.data[shortID] = urls[i]
+		s.userURLs[urls[i].UserID] = append(s.userURLs[urls[i].UserID], shortID)
 		s.nextID++
 		ids = append(ids, shortID)
 	}
@@ -58,6 +62,22 @@ func (s *FileStorage) Get(shortURL string) (URL, bool) {
 		return URL{}, false
 	}
 	return url, true
+}
+
+func (s *FileStorage) GetURLsByUserID(userID string) ([]URL, error) {
+	shortURLs, exists := s.userURLs[userID]
+	if !exists || len(shortURLs) == 0 {
+		return nil, nil
+	}
+
+	var urls []URL
+	for _, shortURL := range shortURLs {
+		if url, found := s.data[shortURL]; found {
+			urls = append(urls, url)
+		}
+	}
+
+	return urls, nil
 }
 
 func (s *FileStorage) GetNextID() (int, error) {
@@ -119,6 +139,7 @@ func (s *FileStorage) loadFromFile() error {
 			return err
 		}
 		s.data[url.ShortURL] = url
+		s.userURLs[url.UserID] = append(s.userURLs[url.UserID], url.ShortURL)
 		if urlID, _ := strconv.Atoi(url.CorrelationID); urlID >= s.nextID {
 			s.nextID = urlID + 1
 		}
