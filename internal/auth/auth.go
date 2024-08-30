@@ -13,7 +13,7 @@ import (
 
 const (
 	CookieName = "user_id"
-	SecretKey  = "your-secret-key" // Это ключ для подписи куки
+	SecretKey  = "super-secret-key" // Это ключ для подписи куки
 )
 
 // GenerateUserID генерирует новый уникальный идентификатор пользователя.

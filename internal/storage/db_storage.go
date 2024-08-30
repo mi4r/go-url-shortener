@@ -48,9 +48,9 @@ func NewDBStorage(dsn string) (*DBStorage, error) {
         id SERIAL PRIMARY KEY,
         correlation_id VARCHAR(255) NOT NULL,
         short_url VARCHAR(255) NOT NULL UNIQUE,
-        original_url TEXT NOT NULL UNIQUE
+        original_url TEXT NOT NULL UNIQUE,
+		user_id VARCHAR(255)
     );
-	ALTER TABLE urls ADD COLUMN user_id VARCHAR(255);
 	`
 	_, err = db.Exec(query)
 	if err != nil {
