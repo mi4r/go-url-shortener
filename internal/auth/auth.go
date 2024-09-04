@@ -37,6 +37,7 @@ func SetUserCookie(w http.ResponseWriter, userID string) {
 		Value:    cookieValue,
 		Expires:  time.Now().Add(24 * time.Hour * 365), // Кука действует 1 год
 		HttpOnly: true,
+		Secure:   false,
 	}
 	http.SetCookie(w, cookie)
 }

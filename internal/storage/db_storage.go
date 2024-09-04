@@ -134,7 +134,7 @@ func (s *DBStorage) Get(shortURL string) (URL, bool) {
 }
 
 func (s *DBStorage) GetURLsByUserID(userID string) ([]URL, error) {
-	rows, err := s.Database.Query("SELECT short_url, original_url FROM urls WHERE user_id = $1", userID)
+	rows, err := s.Database.Query("SELECT short_url, original_url FROM urls WHERE user_id = $1;", userID)
 	if err != nil {
 		return nil, err
 	}
@@ -172,7 +172,7 @@ func (s *DBStorage) Ping() error {
 
 func checkUniqueShortID(tx *sql.Tx, shortID string) error {
 	var exists bool
-	err := tx.QueryRow("SELECT EXISTS(SELECT 1 FROM urls WHERE short_url = $1)", shortID).Scan(&exists)
+	err := tx.QueryRow("SELECT EXISTS(SELECT 1 FROM urls WHERE short_url = $1);", shortID).Scan(&exists)
 	if err != nil {
 		return err
 	}
@@ -183,7 +183,7 @@ func checkUniqueShortID(tx *sql.Tx, shortID string) error {
 }
 
 func (s *DBStorage) MarkURLsAsDeleted(userID string, shortIDs []string) error {
-	query := `UPDATE urls SET is_deleted = TRUE WHERE user_id = $1 AND short_url = ANY($2)`
+	query := `UPDATE urls SET is_deleted = TRUE WHERE user_id = $1 AND short_url = ANY($2);`
 	_, err := s.Database.Exec(query, userID, shortIDs)
 	return err
 }
