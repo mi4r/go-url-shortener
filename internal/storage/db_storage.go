@@ -50,9 +50,10 @@ func NewDBStorage(dsn string) (*DBStorage, error) {
         short_url VARCHAR(255) NOT NULL UNIQUE,
         original_url TEXT NOT NULL UNIQUE,
 		user_id VARCHAR(255)
+		is_deleted BOOLEAN DEFAULT FALSE
     );
-	ALTER TABLE urls ADD COLUMN is_deleted BOOLEAN DEFAULT FALSE;
 	`
+
 	_, err = db.Exec(query)
 	if err != nil {
 		return nil, err
