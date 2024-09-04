@@ -49,7 +49,7 @@ func NewDBStorage(dsn string) (*DBStorage, error) {
         correlation_id VARCHAR(255) NOT NULL,
         short_url VARCHAR(255) NOT NULL UNIQUE,
         original_url TEXT NOT NULL UNIQUE,
-		user_id VARCHAR(255)
+		user_id VARCHAR(255),
 		is_deleted BOOLEAN DEFAULT FALSE
     );
 	`
