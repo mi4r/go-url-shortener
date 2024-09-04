@@ -343,7 +343,6 @@ func UserURLsHandler(storageImpl storage.Storage) http.HandlerFunc {
 
 func DeleteUserURLsHandler(storageImpl storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		// Проверяем подлинность куки
 		userID, valid := auth.ValidateUserCookie(req)
 		if !valid {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -357,15 +356,54 @@ func DeleteUserURLsHandler(storageImpl storage.Storage) http.HandlerFunc {
 			return
 		}
 
-		// go func() { // Асинхронное удаление
-		// 	if err := storageImpl.MarkURLsAsDeleted(userID, ids); err != nil {
-		// 		logger.Sugar.Errorf("Failed to mark URLs as deleted: %v", err)
-		// 	}
-		// }()
-		if err := storageImpl.MarkURLsAsDeleted(userID, ids); err != nil {
-			logger.Sugar.Errorf("Failed to mark URLs as deleted: %v", err)
+		idChan := make(chan string)
+		done := make(chan struct{})
+
+		go func() {
+			defer close(idChan)
+			for _, id := range ids {
+				idChan <- id
+			}
+		}()
+
+		updateBatch := func(urls []string) {
+			if len(urls) == 0 {
+				return
+			}
+			if err := storageImpl.MarkURLsAsDeleted(userID, urls); err != nil {
+				logger.Sugar.Errorf("Error marking URLs as deleted: %v", err)
+			}
 		}
 
+		workerCount := 5
+		batchSize := 10
+		urlsBatch := make([]string, 0, batchSize)
+		urlsChan := make(chan []string)
+
+		for i := 0; i < workerCount; i++ {
+			go func() {
+				for batch := range urlsChan {
+					updateBatch(batch)
+				}
+			}()
+		}
+
+		go func() {
+			defer close(urlsChan)
+			for id := range idChan {
+				urlsBatch = append(urlsBatch, id)
+				if len(urlsBatch) >= batchSize {
+					urlsChan <- urlsBatch
+					urlsBatch = make([]string, 0, batchSize)
+				}
+			}
+			if len(urlsBatch) > 0 {
+				urlsChan <- urlsBatch
+			}
+			done <- struct{}{}
+		}()
+
+		<-done
 		w.WriteHeader(http.StatusAccepted)
 	}
 }
