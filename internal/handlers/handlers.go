@@ -5,7 +5,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
-	"time"
+	"sync"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/mi4r/go-url-shortener/cmd/config"
@@ -359,7 +359,8 @@ func DeleteUserURLsHandler(storageImpl storage.Storage) http.HandlerFunc {
 		}
 
 		idChan := make(chan string)
-		done := make(chan struct{})
+		// done := make(chan struct{})
+		var wg sync.WaitGroup
 
 		go func() {
 			defer close(idChan)
@@ -378,17 +379,19 @@ func DeleteUserURLsHandler(storageImpl storage.Storage) http.HandlerFunc {
 			}
 		}
 
-		workerCount := 5
+		numWorkers := 5
 		batchSize := 10
 		urlsBatch := make([]string, 0, batchSize)
-		urlsChan := make(chan []string)
+		urlsChan := make(chan []string, len(urlsBatch))
 
-		for i := 0; i < workerCount; i++ {
-			go func() {
-				for batch := range urlsChan {
+		for i := 0; i < numWorkers; i++ {
+			wg.Add(1)
+			go func(inputCh chan []string, wg *sync.WaitGroup) {
+				defer wg.Done()
+				for batch := range inputCh {
 					updateBatch(batch)
 				}
-			}()
+			}(urlsChan, &wg)
 		}
 
 		go func() {
@@ -403,17 +406,18 @@ func DeleteUserURLsHandler(storageImpl storage.Storage) http.HandlerFunc {
 			if len(urlsBatch) > 0 {
 				urlsChan <- urlsBatch
 			}
-			done <- struct{}{}
+			// done <- struct{}{}
 		}()
 
 		// <-done
-		t := time.NewTimer(time.Second * 10)
-		select {
-		case <-done:
-			logger.Sugar.Info("Получен done")
-		case <-t.C:
-			logger.Sugar.Info("timer")
-		}
+		// t := time.NewTimer(time.Second * 10)
+		// select {
+		// case <-done:
+		// 	logger.Sugar.Info("Получен done")
+		// case <-t.C:
+		// 	logger.Sugar.Info("timer")
+		// }
+		wg.Wait()
 		w.WriteHeader(http.StatusAccepted)
 	}
 }
