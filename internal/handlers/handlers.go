@@ -273,6 +273,11 @@ func RedirectHandler(storageImpl storage.Storage) http.HandlerFunc {
 			return
 		}
 
+		if url.DeletedFlag {
+			http.Error(w, "Gone", http.StatusGone)
+			return
+		}
+
 		http.Redirect(w, req, url.OriginalURL, http.StatusTemporaryRedirect)
 	}
 }
@@ -333,5 +338,34 @@ func UserURLsHandler(storageImpl storage.Storage) http.HandlerFunc {
 			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 			return
 		}
+	}
+}
+
+func DeleteUserURLsHandler(storageImpl storage.Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		// Проверяем подлинность куки
+		userID, valid := auth.ValidateUserCookie(req)
+		if !valid {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		var ids []string
+		decoder := json.NewDecoder(req.Body)
+		if err := decoder.Decode(&ids); err != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		// go func() { // Асинхронное удаление
+		// 	if err := storageImpl.MarkURLsAsDeleted(userID, ids); err != nil {
+		// 		logger.Sugar.Errorf("Failed to mark URLs as deleted: %v", err)
+		// 	}
+		// }()
+		if err := storageImpl.MarkURLsAsDeleted(userID, ids); err != nil {
+			logger.Sugar.Errorf("Failed to mark URLs as deleted: %v", err)
+		}
+
+		w.WriteHeader(http.StatusAccepted)
 	}
 }

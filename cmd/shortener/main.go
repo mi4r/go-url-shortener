@@ -67,6 +67,7 @@ func main() {
 		})
 		r.Route("/user", func(r chi.Router) {
 			r.Get("/urls", handlers.UserURLsHandler(storageImpl))
+			r.Delete("/urls", handlers.DeleteUserURLsHandler(storageImpl))
 		})
 	})
 	r.Get("/ping", handlers.PingHandler(storageImpl))

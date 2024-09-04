@@ -299,6 +299,11 @@ func (m *MockStorage) SaveBatch(urls []storage.URL) ([]string, error) {
 	return args.Get(0).([]string), args.Error(1)
 }
 
+func (m *MockStorage) MarkURLsAsDeleted(userID string, shortIDs []string) error {
+	args := m.Called(userID, shortIDs)
+	return args.Error(0)
+}
+
 func TestBatchShortenURLHandler_Success(t *testing.T) {
 	handlers.Flags = &config.Flags{
 		RunAddr:            "localhost:8080",

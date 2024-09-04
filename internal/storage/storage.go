@@ -14,6 +14,7 @@ type Storage interface {
 	GetURLsByUserID(userID string) ([]URL, error)
 	GetNextID() (int, error)
 	Close() error
+	MarkURLsAsDeleted(userID string, shortIDs []string) error
 }
 
 type Pinger interface {
@@ -25,7 +26,7 @@ type URL struct {
 	ShortURL      string `json:"short_url"`
 	OriginalURL   string `json:"original_url"`
 	UserID        string `json:"user_id"`
-	// DeletedFlag   bool   `db:"is_deleted"`
+	DeletedFlag   bool   `db:"is_deleted"`
 }
 
 func generateShortID() string {

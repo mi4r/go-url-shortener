@@ -144,5 +144,32 @@ func (s *FileStorage) loadFromFile() error {
 			s.nextID = urlID + 1
 		}
 	}
+	logger.Sugar.Infoln(s.userURLs)
+	return nil
+}
+
+func (s *FileStorage) MarkURLsAsDeleted(userID string, ids []string) error {
+	for _, id := range ids {
+		if url, exists := s.data[id]; exists && url.UserID == userID {
+			url.DeletedFlag = true
+			s.data[id] = url
+		}
+	}
+	return s.saveAllToFile()
+}
+
+func (s *FileStorage) saveAllToFile() error {
+	file, err := os.OpenFile(s.filePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	encoder := json.NewEncoder(file)
+	for _, url := range s.data {
+		if err := encoder.Encode(url); err != nil {
+			return err
+		}
+	}
 	return nil
 }

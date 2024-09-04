@@ -1,5 +1,7 @@
 package storage
 
+import "github.com/mi4r/go-url-shortener/internal/logger"
+
 type MemoryStorage struct {
 	data     map[string]URL
 	userURLs map[string][]string
@@ -66,5 +68,17 @@ func (s *MemoryStorage) GetNextID() (int, error) {
 }
 
 func (s *MemoryStorage) Close() error {
+	return nil
+}
+
+func (s *MemoryStorage) MarkURLsAsDeleted(userID string, ids []string) error {
+	for _, id := range ids {
+		url, exists := s.data[id]
+		if exists && url.UserID == userID {
+			url.DeletedFlag = true
+			s.data[id] = url
+		}
+	}
+	logger.Sugar.Info(s.data)
 	return nil
 }

@@ -51,6 +51,7 @@ func NewDBStorage(dsn string) (*DBStorage, error) {
         original_url TEXT NOT NULL UNIQUE,
 		user_id VARCHAR(255)
     );
+	ALTER TABLE urls ADD COLUMN is_deleted BOOLEAN DEFAULT FALSE;
 	`
 	_, err = db.Exec(query)
 	if err != nil {
@@ -178,4 +179,10 @@ func checkUniqueShortID(tx *sql.Tx, shortID string) error {
 		return fmt.Errorf("duplicate key value violates unique constraint")
 	}
 	return nil
+}
+
+func (s *DBStorage) MarkURLsAsDeleted(userID string, shortIDs []string) error {
+	query := `UPDATE urls SET is_deleted = TRUE WHERE user_id = $1 AND short_url = ANY($2)`
+	_, err := s.Database.Exec(query, userID, shortIDs)
+	return err
 }
