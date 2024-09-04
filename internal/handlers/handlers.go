@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/mi4r/go-url-shortener/cmd/config"
@@ -403,7 +404,14 @@ func DeleteUserURLsHandler(storageImpl storage.Storage) http.HandlerFunc {
 			done <- struct{}{}
 		}()
 
-		<-done
+		// <-done
+		t := time.NewTimer(time.Second * 10)
+		select {
+		case <-done:
+			logger.Sugar.Info("Получен done")
+		case <-t.C:
+			logger.Sugar.Info("timer")
+		}
 		w.WriteHeader(http.StatusAccepted)
 	}
 }
