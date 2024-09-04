@@ -349,6 +349,7 @@ func DeleteUserURLsHandler(storageImpl storage.Storage) http.HandlerFunc {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
+		logger.Sugar.Infof("userID: %v", userID)
 
 		var ids []string
 		decoder := json.NewDecoder(req.Body)
@@ -371,6 +372,7 @@ func DeleteUserURLsHandler(storageImpl storage.Storage) http.HandlerFunc {
 			if len(urls) == 0 {
 				return
 			}
+			logger.Sugar.Infof("urls: %v", urls)
 			if err := storageImpl.MarkURLsAsDeleted(userID, urls); err != nil {
 				logger.Sugar.Errorf("Error marking URLs as deleted: %v", err)
 			}
