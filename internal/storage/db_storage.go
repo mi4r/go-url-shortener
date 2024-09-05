@@ -131,7 +131,10 @@ func (s *DBStorage) SaveBatch(urls []URL) ([]string, error) {
 
 func (s *DBStorage) Get(shortURL string) (URL, bool) {
 	var url URL
-	err := s.Database.QueryRow("SELECT correlation_id, short_url, original_url FROM urls WHERE short_url = $1;", shortURL).Scan(&url.CorrelationID, &url.ShortURL, &url.OriginalURL)
+	err := s.Database.
+		QueryRow("SELECT correlation_id, short_url, original_url, is_deleted FROM urls WHERE short_url = $1;", shortURL).
+		Scan(&url.CorrelationID, &url.ShortURL, &url.OriginalURL, &url.DeletedFlag)
+
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return url, false
