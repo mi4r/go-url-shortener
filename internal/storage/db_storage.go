@@ -83,6 +83,9 @@ func (s *DBStorage) Save(url URL) (string, error) {
 		}
 		return "", err
 	}
+
+	logger.Sugar.Infof("сохранен Save.url: %v", url)
+
 	return "", nil
 }
 
@@ -109,10 +112,13 @@ func (s *DBStorage) SaveBatch(urls []URL) ([]string, error) {
 				break
 			}
 		}
-		fmt.Println(url)
+
 		if _, err := stmt.Exec(url.CorrelationID, shortID, url.OriginalURL, url.UserID); err != nil {
 			return nil, err
 		}
+
+		logger.Sugar.Infof("сохранен SaveBatch.url:%v c shortID: %s", url, shortID)
+
 		ids = append(ids, shortID)
 	}
 

@@ -373,7 +373,7 @@ func DeleteUserURLsHandler(storageImpl storage.Storage) http.HandlerFunc {
 			if len(urls) == 0 {
 				return
 			}
-			logger.Sugar.Infof("urls: %v", urls)
+			logger.Sugar.Infof("urls: %v, for user %s", urls, userID)
 			if err := storageImpl.MarkURLsAsDeleted(userID, urls); err != nil {
 				logger.Sugar.Errorf("Error marking URLs as deleted: %v", err)
 			}
