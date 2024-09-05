@@ -195,18 +195,9 @@ func checkUniqueShortID(tx *sql.Tx, shortID string) error {
 
 func (s *DBStorage) MarkURLsAsDeleted(userID string, shortIDs []string) error {
 	query := `UPDATE urls SET is_deleted = TRUE WHERE user_id = $1 AND short_url = ANY($2);`
-	res, err := s.Database.Exec(query, userID, shortIDs)
+	_, err := s.Database.Exec(query, userID, shortIDs)
 	if err != nil {
 		return err
 	}
-
-	num, err := res.RowsAffected()
-	if err != nil {
-		logger.Sugar.Errorf("ошибка вызова RowsAffected: %s", err.Error())
-		return nil
-	} else {
-		logger.Sugar.Infof("обновленое %d записей пользователя %s, запрощено %d", num, userID, len(shortIDs))
-	}
-
 	return nil
 }

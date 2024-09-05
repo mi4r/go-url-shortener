@@ -349,7 +349,6 @@ func DeleteUserURLsHandler(storageImpl storage.Storage) http.HandlerFunc {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
-		logger.Sugar.Infof("userID: %v", userID)
 
 		var ids []string
 		decoder := json.NewDecoder(req.Body)
@@ -359,7 +358,6 @@ func DeleteUserURLsHandler(storageImpl storage.Storage) http.HandlerFunc {
 		}
 
 		idChan := make(chan string)
-		// done := make(chan struct{})
 		var wg sync.WaitGroup
 
 		go func() {
@@ -373,7 +371,6 @@ func DeleteUserURLsHandler(storageImpl storage.Storage) http.HandlerFunc {
 			if len(urls) == 0 {
 				return
 			}
-			logger.Sugar.Infof("urls: %v, for user %s", urls, userID)
 			if err := storageImpl.MarkURLsAsDeleted(userID, urls); err != nil {
 				logger.Sugar.Errorf("Error marking URLs as deleted: %v", err)
 			}
@@ -406,17 +403,8 @@ func DeleteUserURLsHandler(storageImpl storage.Storage) http.HandlerFunc {
 			if len(urlsBatch) > 0 {
 				urlsChan <- urlsBatch
 			}
-			// done <- struct{}{}
 		}()
 
-		// <-done
-		// t := time.NewTimer(time.Second * 10)
-		// select {
-		// case <-done:
-		// 	logger.Sugar.Info("Получен done")
-		// case <-t.C:
-		// 	logger.Sugar.Info("timer")
-		// }
 		wg.Wait()
 		w.WriteHeader(http.StatusAccepted)
 	}
