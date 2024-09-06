@@ -268,6 +268,12 @@ type MockStorage struct {
 	mock.Mock
 }
 
+// GetURLsByUserID implements storage.Storage.
+func (m *MockStorage) GetURLsByUserID(userID string) ([]storage.URL, error) {
+	args := m.Called(userID)
+	return args.Get(0).([]storage.URL), args.Error(1)
+}
+
 func (m *MockStorage) Close() error {
 	args := m.Called()
 	return args.Error(0)
@@ -291,6 +297,11 @@ func (m *MockStorage) GetNextID() (int, error) {
 func (m *MockStorage) SaveBatch(urls []storage.URL) ([]string, error) {
 	args := m.Called(urls)
 	return args.Get(0).([]string), args.Error(1)
+}
+
+func (m *MockStorage) MarkURLsAsDeleted(userID string, shortIDs []string) error {
+	args := m.Called(userID, shortIDs)
+	return args.Error(0)
 }
 
 func TestBatchShortenURLHandler_Success(t *testing.T) {
