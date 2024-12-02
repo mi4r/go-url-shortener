@@ -16,10 +16,7 @@ func BenchmarkSaveURL(b *testing.B) {
 		URLStorageFilePath: "test_storage.json",
 		DataBaseDSN:        "host=localhost user=url_storage password=1234 dbname=url_storage sslmode=disable",
 	}
-	store, err := storage.NewDBStorage("postgres://mi4r:1234@localhost/url_storage?sslmode=disable")
-	if err != nil {
-		b.Fatalf("failed to initialize storage: %v", err)
-	}
+	store := storage.NewMemoryStorage()
 	defer store.Close()
 
 	// Генерация URL
@@ -46,10 +43,7 @@ func BenchmarkMarkURLsAsDeleted(b *testing.B) {
 		URLStorageFilePath: "test_storage.json",
 		DataBaseDSN:        "host=localhost user=url_storage password=1234 dbname=url_storage sslmode=disable",
 	}
-	store, err := storage.NewDBStorage("postgres://mi4r:1234@localhost/url_storage?sslmode=disable")
-	if err != nil {
-		b.Fatalf("failed to initialize storage: %v", err)
-	}
+	store := storage.NewMemoryStorage()
 	defer store.Close()
 
 	// Генерация данных
