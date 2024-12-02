@@ -23,6 +23,7 @@ var etagHeaders = []string{
 	"If-Unmodified-Since",
 }
 
+// NoCache устанавливает режим без сохранения кэша
 func NoCache(h http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 

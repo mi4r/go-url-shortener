@@ -24,10 +24,8 @@ const (
 	charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 )
 
-var (
-	// Flags содержит глобальные настройки приложения, такие как базовый адрес.
-	Flags *config.Flags
-)
+// Flags содержит глобальные настройки приложения, такие как базовый адрес.
+var Flags *config.Flags
 
 // ShortenRequest представляет запрос на создание короткого URL.
 type ShortenRequest struct {

@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	CookieName = "user_id"
+	CookieName = "user_id"          // Название куки
 	SecretKey  = "super-secret-key" // Это ключ для подписи куки
 )
 

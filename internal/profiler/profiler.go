@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+// Profiler - middleware, который отвечает за профилирование
 func Profiler() http.Handler {
 	r := chi.NewRouter()
 	r.Use(NoCache)
