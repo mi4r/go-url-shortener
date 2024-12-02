@@ -1,3 +1,5 @@
+// Package main реализует точку входа для сервиса сокращения URL.
+// Этот сервис поддерживает хранение URL в памяти, файле или базе данных, а также предоставляет HTTP API для работы с сокращенными ссылками.
 package main
 
 import (
@@ -18,7 +20,14 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
+// main является точкой входа в приложение. Оно выполняет следующие задачи:
+// - Инициализирует логгер.
+// - Загружает конфигурацию.
+// - Настраивает хранилище (в памяти, файл или базу данных).
+// - Регистрирует маршруты HTTP.
+// - Запускает HTTP-сервер.
 func main() {
+	// Инициализация логгера.
 	lgr, err := zap.NewProduction()
 	if err != nil {
 		log.Fatalf("can't initialize zap logger: %v", err)
@@ -31,10 +40,12 @@ func main() {
 
 	logger.Sugar = *lgr.Sugar()
 
+	// Загрузка конфигурации.
 	handlers.Flags = config.Init()
 
 	var storageImpl storage.Storage
 
+	// Настройка хранилища с приоритетом: база данных > файл > память.
 	if handlers.Flags.DataBaseDSN != "" {
 		storageImpl, err = storage.NewDBStorage(handlers.Flags.DataBaseDSN)
 		if err != nil {
@@ -53,33 +64,38 @@ func main() {
 	}
 	defer storageImpl.Close()
 
+	// Инициализация маршрутизатора.
 	r := chi.NewRouter()
-	r.Use(logger.LoggingMiddleware)
-	r.Use(compress.CompressMiddleware)
+	r.Use(logger.LoggingMiddleware)    // Логирование запросов.
+	r.Use(compress.CompressMiddleware) // Сжатие ответов.
 	// r.Mount("/debug", profiler.Profiler())
 	// r.Mount("/debug/pprof", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	// 	http.DefaultServeMux.ServeHTTP(w, r)
 	// }))
+
+	// Роуты для pprof (профилирования).
 	r.HandleFunc("/debug/pprof/*", http.DefaultServeMux.ServeHTTP)
 
+	// Основные маршруты API.
 	r.Route("/", func(r chi.Router) {
-		r.Post("/", handlers.ShortenURLHandler(storageImpl))
+		r.Post("/", handlers.ShortenURLHandler(storageImpl)) // Сокращение URL.
 		r.Route("/{id}", func(r chi.Router) {
-			r.Get("/", handlers.RedirectHandler(storageImpl))
+			r.Get("/", handlers.RedirectHandler(storageImpl)) // Редирект по сокращенному URL.
 		})
 	})
 	r.Route("/api", func(r chi.Router) {
 		r.Route("/shorten", func(r chi.Router) {
-			r.Post("/", handlers.APIShortenURLHandler(storageImpl))
-			r.Post("/batch", handlers.BatchShortenURLHandler(storageImpl))
+			r.Post("/", handlers.APIShortenURLHandler(storageImpl))        // Сокращение URL в формате JSON.
+			r.Post("/batch", handlers.BatchShortenURLHandler(storageImpl)) // API для пакетного сокращения URL.
 		})
 		r.Route("/user", func(r chi.Router) {
-			r.Get("/urls", handlers.UserURLsHandler(storageImpl))
-			r.Delete("/urls", handlers.DeleteUserURLsHandler(storageImpl))
+			r.Get("/urls", handlers.UserURLsHandler(storageImpl))          // Получение всех URL пользователя.
+			r.Delete("/urls", handlers.DeleteUserURLsHandler(storageImpl)) // Удаление URL пользователя.
 		})
 	})
-	r.Get("/ping", handlers.PingHandler(storageImpl))
+	r.Get("/ping", handlers.PingHandler(storageImpl)) // Проверка доступности хранилища.
 
+	// Запуск HTTP-сервера.
 	logger.Sugar.Info("Starting server", zap.String("address", handlers.Flags.RunAddr))
 	log.Fatal(http.ListenAndServe(handlers.Flags.RunAddr, r))
 }

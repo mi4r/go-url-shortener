@@ -71,6 +71,7 @@ func (c *compressReader) Close() error {
 	return c.zr.Close()
 }
 
+// CompressMiddleware сжимает данные для более эффективной работы с ними.
 func CompressMiddleware(h http.Handler) http.Handler {
 	comressFn := func(w http.ResponseWriter, r *http.Request) {
 		// по умолчанию устанавливаем оригинальный http.ResponseWriter как тот,

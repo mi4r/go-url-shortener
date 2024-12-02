@@ -18,37 +18,46 @@ import (
 )
 
 const (
+	// idLength задаёт длину генерируемого короткого идентификатора.
 	idLength = 8
-	charset  = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	// charset определяет набор символов, используемый для генерации коротких идентификаторов.
+	charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 )
 
 var (
+	// Flags содержит глобальные настройки приложения, такие как базовый адрес.
 	Flags *config.Flags
 )
 
+// ShortenRequest представляет запрос на создание короткого URL.
 type ShortenRequest struct {
 	URL string `json:"url"`
 }
 
+// ShortenResponse представляет ответ с коротким URL.
 type ShortenResponse struct {
 	Result string `json:"result"`
 }
 
+// BatchRequestItem описывает элемент в пакетном запросе для сокращения URL.
 type BatchRequestItem struct {
 	CorrelationID string `json:"correlation_id"`
 	OriginalURL   string `json:"original_url"`
 }
 
+// BatchResponseItem описывает элемент в пакетном ответе на запрос сокращения URL.
 type BatchResponseItem struct {
 	CorrelationID string `json:"correlation_id"`
 	ShortURL      string `json:"short_url"`
 }
 
+// URLResponseItem представляет пару "короткий URL - оригинальный URL" для ответа.
 type URLResponseItem struct {
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
 }
 
+// generateShortID генерирует уникальный идентификатор для сокращённого URL.
 func generateShortID() string {
 	b := make([]byte, idLength)
 	for i := range b {
@@ -57,6 +66,7 @@ func generateShortID() string {
 	return string(b)
 }
 
+// ShortenURLHandler обрабатывает запросы на сокращение URL и возвращает короткий URL в текстовом формате.
 func ShortenURLHandler(storageImpl storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		if req.Method != http.MethodPost {
@@ -122,6 +132,7 @@ func ShortenURLHandler(storageImpl storage.Storage) http.HandlerFunc {
 	}
 }
 
+// APIShortenURLHandler обрабатывает запросы API на сокращение URL и возвращает короткий URL в формате JSON.
 func APIShortenURLHandler(storageImpl storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		if req.Method != http.MethodPost {
@@ -200,6 +211,7 @@ func APIShortenURLHandler(storageImpl storage.Storage) http.HandlerFunc {
 	}
 }
 
+// BatchShortenURLHandler обрабатывает пакетные запросы на сокращение URL.
 func BatchShortenURLHandler(storageImpl storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		if req.Method != http.MethodPost {
@@ -260,6 +272,7 @@ func BatchShortenURLHandler(storageImpl storage.Storage) http.HandlerFunc {
 	}
 }
 
+// RedirectHandler обрабатывает перенаправления по коротким URL.
 func RedirectHandler(storageImpl storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		shortID := chi.URLParam(req, "id")
@@ -283,6 +296,7 @@ func RedirectHandler(storageImpl storage.Storage) http.HandlerFunc {
 	}
 }
 
+// PingHandler проверяет соединение с базой данных и возвращает статус.
 func PingHandler(storageImpl storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		pinger, ok := storageImpl.(storage.Pinger)
@@ -342,6 +356,7 @@ func UserURLsHandler(storageImpl storage.Storage) http.HandlerFunc {
 	}
 }
 
+// DeleteUserURLsHandler удаляет (логически) список URL, принадлежащих пользователю.
 func DeleteUserURLsHandler(storageImpl storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		userID, valid := auth.ValidateUserCookie(req)
