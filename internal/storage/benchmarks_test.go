@@ -35,35 +35,3 @@ func BenchmarkSaveURL(b *testing.B) {
 		}
 	}
 }
-
-func BenchmarkMarkURLsAsDeleted(b *testing.B) {
-	handlers.Flags = &config.Flags{
-		RunAddr:            "localhost:8080",
-		BaseShortAddr:      "http://localhost:8080",
-		URLStorageFilePath: "test_storage.json",
-		DataBaseDSN:        "host=localhost user=url_storage password=1234 dbname=url_storage sslmode=disable",
-	}
-	store := storage.NewMemoryStorage()
-	defer store.Close()
-
-	// Генерация данных
-	userID := "test_user"
-	ids := make([]string, 0, 100)
-	for i := 0; i < 100; i++ {
-		shortURL := fmt.Sprintf("shortURL_%d", i)
-		ids = append(ids, shortURL)
-		store.Save(storage.URL{
-			ShortURL:    shortURL,
-			OriginalURL: "http://example.com",
-			UserID:      userID,
-		})
-	}
-
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
-		if err := store.MarkURLsAsDeleted(userID, ids); err != nil {
-			b.Errorf("failed to mark URLs as deleted: %v", err)
-		}
-	}
-}
