@@ -13,6 +13,8 @@ import (
 	"github.com/mi4r/go-url-shortener/internal/logger"
 	"github.com/mi4r/go-url-shortener/internal/storage"
 
+	_ "net/http/pprof"
+
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
@@ -54,6 +56,12 @@ func main() {
 	r := chi.NewRouter()
 	r.Use(logger.LoggingMiddleware)
 	r.Use(compress.CompressMiddleware)
+	// r.Mount("/debug", profiler.Profiler())
+	// r.Mount("/debug/pprof", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	// 	http.DefaultServeMux.ServeHTTP(w, r)
+	// }))
+	r.HandleFunc("/debug/pprof/*", http.DefaultServeMux.ServeHTTP)
+
 	r.Route("/", func(r chi.Router) {
 		r.Post("/", handlers.ShortenURLHandler(storageImpl))
 		r.Route("/{id}", func(r chi.Router) {
