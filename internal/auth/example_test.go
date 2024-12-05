@@ -29,6 +29,7 @@ func ExampleSetUserCookie() {
 	auth.SetUserCookie(w, userID)
 
 	resp := w.Result()
+	defer resp.Body.Close()
 	cookies := resp.Cookies()
 
 	if len(cookies) > 0 {
