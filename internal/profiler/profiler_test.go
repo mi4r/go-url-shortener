@@ -22,6 +22,7 @@ func TestNoCacheHeaders(t *testing.T) {
 	noCacheHandler.ServeHTTP(rr, req)
 
 	resp := rr.Result()
+	defer resp.Body.Close()
 
 	// Проверяем заголовки отключения кэширования
 	for k, v := range noCacheHeaders {

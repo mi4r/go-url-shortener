@@ -38,6 +38,7 @@ func TestSetUserCookie(t *testing.T) {
 
 	SetUserCookie(w, userID)
 	resp := w.Result()
+	defer resp.Body.Close()
 	cookie := resp.Cookies()
 
 	if len(cookie) == 0 {
@@ -65,7 +66,9 @@ func TestValidateUserCookie_ValidCookie(t *testing.T) {
 	SetUserCookie(w, userID)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	cookie := w.Result().Cookies()[0]
+	resp := w.Result()
+	cookie := resp.Cookies()[0]
+	defer resp.Body.Close()
 	req.AddCookie(cookie)
 
 	validatedUserID, valid := ValidateUserCookie(req)
