@@ -16,7 +16,9 @@ func setupTestDB(t *testing.T) *sql.DB {
 	if err != nil {
 		t.Skipf("Skipping test due to database connection error: %v", err)
 	}
-
+	if err := db.Ping(); err != nil {
+		t.Skipf("Skipping test due to database connection error: %v", err)
+	}
 	_, err = db.Exec(`DROP TABLE IF EXISTS urls;`)
 	if err != nil {
 		t.Fatalf("failed to clean test database: %v", err)
@@ -44,6 +46,9 @@ func TestDBStorage(t *testing.T) {
 	defer db.Close()
 
 	storage, err := NewDBStorage(testDSN)
+	if err := storage.Ping(); err != nil {
+		t.Skipf("Skipping test due to database connection error: %v", err)
+	}
 	if err != nil {
 		t.Fatalf("failed to initialize DBStorage: %v", err)
 	}
