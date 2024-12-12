@@ -14,7 +14,7 @@ const testDSN = "postgresql://mi4r:1234@localhost/test_db?sslmode=disable"
 func setupTestDB(t *testing.T) *sql.DB {
 	db, err := sql.Open("pgx", testDSN)
 	if err != nil {
-		t.Fatalf("failed to connect to test database: %v", err)
+		t.Skipf("Skipping test due to database connection error: %v", err)
 	}
 
 	_, err = db.Exec(`DROP TABLE IF EXISTS urls;`)
