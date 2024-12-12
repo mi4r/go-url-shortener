@@ -36,6 +36,7 @@ func TestShortenURLHandler(t *testing.T) {
 	handler.ServeHTTP(w, req)
 
 	resp := w.Result()
+	defer resp.Body.Close()
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 
 	body := new(bytes.Buffer)
@@ -66,6 +67,7 @@ func TestAPIShortenURLHandler(t *testing.T) {
 	handler.ServeHTTP(w, req)
 
 	resp := w.Result()
+	defer resp.Body.Close()
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 
 	var responseBody ShortenResponse
@@ -88,6 +90,7 @@ func TestRedirectHandler(t *testing.T) {
 	r.ServeHTTP(w, req)
 
 	resp := w.Result()
+	defer resp.Body.Close()
 	assert.Equal(t, http.StatusTemporaryRedirect, resp.StatusCode)
 	assert.Equal(t, "http://example.com", resp.Header.Get("Location"))
 }
@@ -105,6 +108,7 @@ func TestPingHandler(t *testing.T) {
 	handler.ServeHTTP(w, req)
 
 	resp := w.Result()
+	defer resp.Body.Close()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 }
 
@@ -157,6 +161,7 @@ func TestBatchShortenURLHandler(t *testing.T) {
 	handler.ServeHTTP(w, req)
 
 	resp := w.Result()
+	defer resp.Body.Close()
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 
 	var responseBody []BatchResponseItem
