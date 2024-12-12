@@ -1,3 +1,5 @@
+//go:build !test
+
 // Package main реализует точку входа для сервиса сокращения URL.
 // Этот сервис поддерживает хранение URL в памяти, файле или базе данных, а также предоставляет HTTP API для работы с сокращенными ссылками.
 package main
@@ -13,6 +15,7 @@ import (
 	"github.com/mi4r/go-url-shortener/internal/compress"
 	"github.com/mi4r/go-url-shortener/internal/handlers"
 	"github.com/mi4r/go-url-shortener/internal/logger"
+	"github.com/mi4r/go-url-shortener/internal/profiler"
 	"github.com/mi4r/go-url-shortener/internal/storage"
 
 	_ "net/http/pprof"
@@ -68,13 +71,12 @@ func main() {
 	r := chi.NewRouter()
 	r.Use(logger.LoggingMiddleware)    // Логирование запросов.
 	r.Use(compress.CompressMiddleware) // Сжатие ответов.
-	// r.Mount("/debug", profiler.Profiler())
 	// r.Mount("/debug/pprof", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	// 	http.DefaultServeMux.ServeHTTP(w, r)
 	// }))
 
 	// Роуты для pprof (профилирования).
-	r.HandleFunc("/debug/pprof/*", http.DefaultServeMux.ServeHTTP)
+	// r.HandleFunc("/debug/pprof/*", http.DefaultServeMux.ServeHTTP)
 
 	// Основные маршруты API.
 	r.Route("/", func(r chi.Router) {
@@ -94,6 +96,7 @@ func main() {
 		})
 	})
 	r.Get("/ping", handlers.PingHandler(storageImpl)) // Проверка доступности хранилища.
+	r.Mount("/debug", profiler.Profiler())
 
 	// Запуск HTTP-сервера.
 	logger.Sugar.Info("Starting server", zap.String("address", handlers.Flags.RunAddr))
