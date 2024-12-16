@@ -9,13 +9,15 @@ import (
 	"github.com/mi4r/go-url-shortener/internal/logger"
 )
 
+// FileStorage представляет файловое хранилище сокращённых URL.
 type FileStorage struct {
-	filePath string
-	data     map[string]URL
-	userURLs map[string][]string
-	nextID   int
+	filePath string              // Путь к файлу хранилища.
+	data     map[string]URL      // Карта сокращённых URL с данными.
+	userURLs map[string][]string // Карта сокращённых URL для каждого пользователя.
+	nextID   int                 // Следующий уникальный идентификатор.
 }
 
+// NewFileStorage создаёт новый экземпляр файлового хранилища и загружает данные из файла.
 func NewFileStorage(filePath string) (*FileStorage, error) {
 	fs := &FileStorage{
 		filePath: filePath,
@@ -30,6 +32,7 @@ func NewFileStorage(filePath string) (*FileStorage, error) {
 	return fs, nil
 }
 
+// Save сохраняет URL в файловое хранилище.
 func (s *FileStorage) Save(url URL) (string, error) {
 	s.data[url.ShortURL] = url
 	s.userURLs[url.UserID] = append(s.userURLs[url.UserID], url.ShortURL)
@@ -37,6 +40,7 @@ func (s *FileStorage) Save(url URL) (string, error) {
 	return "", s.saveToFile(url)
 }
 
+// SaveBatch сохраняет пакет URL в файловое хранилище.
 func (s *FileStorage) SaveBatch(urls []URL) ([]string, error) {
 	ids := make([]string, 0, len(urls))
 
@@ -56,6 +60,7 @@ func (s *FileStorage) SaveBatch(urls []URL) ([]string, error) {
 	return ids, nil
 }
 
+// Get возвращает URL по сокращённому идентификатору.
 func (s *FileStorage) Get(shortURL string) (URL, bool) {
 	url, exists := s.data[shortURL]
 	if !exists {
@@ -64,6 +69,7 @@ func (s *FileStorage) Get(shortURL string) (URL, bool) {
 	return url, true
 }
 
+// GetURLsByUserID возвращает все URL, связанные с указанным идентификатором пользователя.
 func (s *FileStorage) GetURLsByUserID(userID string) ([]URL, error) {
 	shortURLs, exists := s.userURLs[userID]
 	if !exists || len(shortURLs) == 0 {
@@ -80,14 +86,17 @@ func (s *FileStorage) GetURLsByUserID(userID string) ([]URL, error) {
 	return urls, nil
 }
 
+// GetNextID возвращает следующий уникальный идентификатор.
 func (s *FileStorage) GetNextID() (int, error) {
 	return s.nextID, nil
 }
 
+// Close завершает работу файлового хранилища. Не требует особых действий.
 func (s *FileStorage) Close() error {
 	return nil
 }
 
+// saveToFile записывает данные URL в файл.
 func (s *FileStorage) saveToFile(url URL) error {
 	file, err := os.OpenFile(s.filePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
 	if err != nil {
@@ -103,6 +112,7 @@ func (s *FileStorage) saveToFile(url URL) error {
 	return encoder.Encode(url)
 }
 
+// saveBatchToFile записывает пакет URL в файл.
 func (s *FileStorage) saveBatchToFile(batch []URL) error {
 	file, err := os.OpenFile(s.filePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
 	if err != nil {
@@ -118,6 +128,7 @@ func (s *FileStorage) saveBatchToFile(batch []URL) error {
 	return encoder.Encode(batch)
 }
 
+// loadFromFile загружает данные из файла в память.
 func (s *FileStorage) loadFromFile() error {
 	file, err := os.OpenFile(s.filePath, os.O_CREATE|os.O_RDONLY, 0666)
 	if err != nil {
@@ -148,6 +159,7 @@ func (s *FileStorage) loadFromFile() error {
 	return nil
 }
 
+// MarkURLsAsDeleted помечает указанные сокращённые URL как удалённые для указанного пользователя.
 func (s *FileStorage) MarkURLsAsDeleted(userID string, ids []string) error {
 	for _, id := range ids {
 		if url, exists := s.data[id]; exists && url.UserID == userID {
@@ -158,6 +170,7 @@ func (s *FileStorage) MarkURLsAsDeleted(userID string, ids []string) error {
 	return s.saveAllToFile()
 }
 
+// saveAllToFile перезаписывает файл хранилища со всеми данными.
 func (s *FileStorage) saveAllToFile() error {
 	file, err := os.OpenFile(s.filePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
 	if err != nil {

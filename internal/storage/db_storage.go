@@ -13,10 +13,17 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
+// DBStorage представляет реализацию хранилища URL на основе базы данных.
 type DBStorage struct {
-	Database *sql.DB
+	Database   *sql.DB // Соединение с базой данных.
+	statements struct {
+		save   *sql.Stmt
+		get    *sql.Stmt
+		delete *sql.Stmt
+	}
 }
 
+// MigrateDB выполняет миграции базы данных, удаляя дубликаты URL и добавляя уникальный индекс.
 func MigrateDB(db *sql.DB) error {
 	// Удаление дубликатов
 	_, err := db.Exec(`
@@ -39,6 +46,7 @@ func MigrateDB(db *sql.DB) error {
 	return err
 }
 
+// NewDBStorage создает новое хранилище URL на основе базы данных.
 func NewDBStorage(dsn string) (*DBStorage, error) {
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
@@ -65,12 +73,31 @@ func NewDBStorage(dsn string) (*DBStorage, error) {
 		return nil, err
 	}
 
-	return &DBStorage{Database: db}, nil
+	// Инициализация подготовленного запроса
+	saveStmt, err := db.Prepare("INSERT INTO urls (correlation_id, short_url, original_url, user_id) VALUES ($1, $2, $3, $4);")
+	if err != nil {
+		return nil, err
+	}
+	deleteStmt, err := db.Prepare(`UPDATE urls SET is_deleted = TRUE WHERE user_id = $1 AND short_url = ANY($2);`)
+	if err != nil {
+		return nil, err
+	}
+	getStmt, err := db.Prepare("SELECT correlation_id, short_url, original_url, is_deleted FROM urls WHERE short_url = $1;")
+	if err != nil {
+		return nil, err
+	}
+
+	storage := &DBStorage{Database: db}
+	storage.statements.save = saveStmt
+	storage.statements.delete = deleteStmt
+	storage.statements.get = getStmt
+
+	return storage, nil
 }
 
+// Save сохраняет URL в базе данных и возвращает существующий короткий URL, если оригинальный уже существует.
 func (s *DBStorage) Save(url URL) (string, error) {
-	_, err := s.Database.Exec("INSERT INTO urls (correlation_id, short_url, original_url, user_id) VALUES ($1, $2, $3, $4);",
-		url.CorrelationID, url.ShortURL, url.OriginalURL, url.UserID)
+	_, err := s.statements.save.Exec(url.CorrelationID, url.ShortURL, url.OriginalURL, url.UserID)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
@@ -89,6 +116,7 @@ func (s *DBStorage) Save(url URL) (string, error) {
 	return "", nil
 }
 
+// SaveBatch сохраняет пакет URL в базе данных и возвращает список коротких идентификаторов.
 func (s *DBStorage) SaveBatch(urls []URL) ([]string, error) {
 	tx, err := s.Database.Begin()
 	if err != nil {
@@ -96,10 +124,7 @@ func (s *DBStorage) SaveBatch(urls []URL) ([]string, error) {
 	}
 	defer tx.Rollback()
 
-	stmt, err := tx.Prepare("INSERT INTO urls (correlation_id, short_url, original_url, user_id) VALUES ($1, $2, $3, $4);")
-	if err != nil {
-		return nil, err
-	}
+	stmt := s.statements.save
 	defer stmt.Close()
 
 	ids := make([]string, 0, len(urls))
@@ -129,11 +154,10 @@ func (s *DBStorage) SaveBatch(urls []URL) ([]string, error) {
 	return ids, nil
 }
 
+// Get возвращает URL, связанный с заданным коротким идентификатором, и флаг существования.
 func (s *DBStorage) Get(shortURL string) (URL, bool) {
 	var url URL
-	err := s.Database.
-		QueryRow("SELECT correlation_id, short_url, original_url, is_deleted FROM urls WHERE short_url = $1;", shortURL).
-		Scan(&url.CorrelationID, &url.ShortURL, &url.OriginalURL, &url.DeletedFlag)
+	err := s.statements.get.QueryRow(shortURL).Scan(&url.CorrelationID, &url.ShortURL, &url.OriginalURL, &url.DeletedFlag)
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -144,6 +168,7 @@ func (s *DBStorage) Get(shortURL string) (URL, bool) {
 	return url, true
 }
 
+// GetURLsByUserID возвращает все URL, связанные с заданным идентификатором пользователя.
 func (s *DBStorage) GetURLsByUserID(userID string) ([]URL, error) {
 	rows, err := s.Database.Query("SELECT short_url, original_url FROM urls WHERE user_id = $1;", userID)
 	if err != nil {
@@ -167,16 +192,25 @@ func (s *DBStorage) GetURLsByUserID(userID string) ([]URL, error) {
 	return urls, nil
 }
 
+// GetNextID возвращает следующий уникальный идентификатор для новой записи.
 func (s *DBStorage) GetNextID() (int, error) {
 	var nextID int
 	err := s.Database.QueryRow("SELECT COALESCE(MAX(id), 0) + 1 FROM urls;").Scan(&nextID)
 	return nextID, err
 }
 
+// Close закрывает соединение с базой данных.
 func (s *DBStorage) Close() error {
+	if s.statements.save != nil {
+		_ = s.statements.save.Close()
+	}
+	if s.statements.delete != nil {
+		_ = s.statements.delete.Close()
+	}
 	return s.Database.Close()
 }
 
+// Ping проверяет доступность соединения с базой данных.
 func (s *DBStorage) Ping() error {
 	return s.Database.Ping()
 }
@@ -193,9 +227,9 @@ func checkUniqueShortID(tx *sql.Tx, shortID string) error {
 	return nil
 }
 
+// MarkURLsAsDeleted помечает список URL как удаленные для указанного пользователя.
 func (s *DBStorage) MarkURLsAsDeleted(userID string, shortIDs []string) error {
-	query := `UPDATE urls SET is_deleted = TRUE WHERE user_id = $1 AND short_url = ANY($2);`
-	_, err := s.Database.Exec(query, userID, shortIDs)
+	_, err := s.statements.delete.Exec(userID, shortIDs)
 	if err != nil {
 		return err
 	}

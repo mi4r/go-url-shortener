@@ -1,3 +1,4 @@
+// Package auth предоставляет функциональность для работы с аутентификацией пользователей через куки.
 package auth
 
 import (
@@ -12,8 +13,10 @@ import (
 )
 
 const (
-	CookieName = "user_id"
-	SecretKey  = "super-secret-key" // Это ключ для подписи куки
+	// cookieName - название куки для хранения идентификатора пользователя.
+	cookieName = "user_id"
+	// secretKey - секретный ключ для подписи идентификатора пользователя.
+	secretKey = "super-secret-key"
 )
 
 // GenerateUserID генерирует новый уникальный идентификатор пользователя.
@@ -23,7 +26,7 @@ func GenerateUserID() string {
 
 // SignUserID создает подпись для идентификатора пользователя.
 func SignUserID(userID string) string {
-	h := hmac.New(sha256.New, []byte(SecretKey))
+	h := hmac.New(sha256.New, []byte(secretKey))
 	h.Write([]byte(userID))
 	return hex.EncodeToString(h.Sum(nil))
 }
@@ -33,7 +36,7 @@ func SetUserCookie(w http.ResponseWriter, userID string) {
 	signature := SignUserID(userID)
 	cookieValue := userID + "|" + signature
 	cookie := &http.Cookie{
-		Name:     CookieName,
+		Name:     cookieName,
 		Value:    cookieValue,
 		Expires:  time.Now().Add(24 * time.Hour * 365), // Кука действует 1 год
 		HttpOnly: true,
@@ -44,7 +47,7 @@ func SetUserCookie(w http.ResponseWriter, userID string) {
 
 // ValidateUserCookie проверяет подлинность куки и возвращает идентификатор пользователя.
 func ValidateUserCookie(r *http.Request) (string, bool) {
-	cookie, err := r.Cookie(CookieName)
+	cookie, err := r.Cookie(cookieName)
 	if err != nil {
 		return "", false
 	}
