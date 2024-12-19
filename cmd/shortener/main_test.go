@@ -114,7 +114,7 @@ func TestShortenURLHandler(t *testing.T) {
 		want        want
 	}{
 		{
-			name:        "sucess case",
+			name:        "success case",
 			method:      http.MethodPost,
 			originalURL: "http://example.com",
 			want: want{
@@ -186,7 +186,7 @@ func TestAPIShortenURLHandler(t *testing.T) {
 		want        want
 	}{
 		{
-			name:        "sucess case",
+			name:        "success case",
 			method:      http.MethodPost,
 			requestBody: map[string]string{"url": "http://example.com"},
 			want: want{

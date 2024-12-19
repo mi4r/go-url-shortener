@@ -71,12 +71,6 @@ func main() {
 	r := chi.NewRouter()
 	r.Use(logger.LoggingMiddleware)    // Логирование запросов.
 	r.Use(compress.CompressMiddleware) // Сжатие ответов.
-	// r.Mount("/debug/pprof", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	// 	http.DefaultServeMux.ServeHTTP(w, r)
-	// }))
-
-	// Роуты для pprof (профилирования).
-	// r.HandleFunc("/debug/pprof/*", http.DefaultServeMux.ServeHTTP)
 
 	// Основные маршруты API.
 	r.Route("/", func(r chi.Router) {
