@@ -25,9 +25,12 @@ import (
 )
 
 var (
+	// buildVersion содержит версию приложения
 	buildVersion string
-	buildDate    string
-	buildCommit  string
+	// buildDate содержит дату сборки приложения
+	buildDate string
+	// buildCommit содержить коммит сборки
+	buildCommit string
 )
 
 func PrintBuildConfig() {
