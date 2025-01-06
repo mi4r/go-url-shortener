@@ -5,6 +5,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
@@ -23,6 +24,30 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
+var (
+	buildVersion string
+	buildDate    string
+	buildCommit  string
+)
+
+func PrintBuildConfig() {
+	version := "N/A"
+	date := "N/A"
+	commit := "N/A"
+	if buildVersion != "" {
+		version = buildVersion
+	}
+	if buildDate != "" {
+		date = buildDate
+	}
+	if buildCommit != "" {
+		commit = buildCommit
+	}
+	fmt.Printf("Build version: %s\n", version)
+	fmt.Printf("Build date: %s\n", date)
+	fmt.Printf("Build commit: %s\n", commit)
+}
+
 // main является точкой входа в приложение. Оно выполняет следующие задачи:
 // - Инициализирует логгер.
 // - Загружает конфигурацию.
@@ -30,6 +55,7 @@ import (
 // - Регистрирует маршруты HTTP.
 // - Запускает HTTP-сервер.
 func main() {
+	PrintBuildConfig()
 	// Инициализация логгера.
 	lgr, err := zap.NewProduction()
 	if err != nil {

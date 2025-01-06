@@ -5,7 +5,7 @@ Package staticlint реализует multichecker для анализа Go-ко
 1. Стандартные анализаторы из пакета `golang.org/x/tools/go/analysis/passes`.
 2. Анализаторы класса SA из пакета `staticcheck.io`.
 3. Один анализатор из других классов `staticcheck.io` (например, ST1000).
-4. Два публичных анализатора: ineffassign, misspell.
+4. Публичные анализаторы: misspell.
 5. Собственный анализатор `noosexit`, запрещающий вызов os.Exit в функции main пакета main.
 
 Запуск:
