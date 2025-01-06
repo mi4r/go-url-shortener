@@ -29,10 +29,12 @@ var (
 	buildVersion string
 	// buildDate содержит дату сборки приложения
 	buildDate string
-	// buildCommit содержить коммит сборки
+	// buildCommit содержит коммит сборки
 	buildCommit string
 )
 
+// PrintBuildConfig выводит установленные и неустановленные флаги линковщика:
+// buildVersion, buildDate, buildCommit
 func PrintBuildConfig() {
 	version := "N/A"
 	date := "N/A"
