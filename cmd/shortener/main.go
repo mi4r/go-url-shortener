@@ -123,7 +123,14 @@ func main() {
 	r.Get("/ping", handlers.PingHandler(storageImpl)) // Проверка доступности хранилища.
 	r.Mount("/debug", profiler.Profiler())
 
-	// Запуск HTTP-сервера.
-	logger.Sugar.Info("Starting server", zap.String("address", handlers.Flags.RunAddr))
-	log.Fatal(http.ListenAndServe(handlers.Flags.RunAddr, r))
+	// Запуск сервера.
+	if handlers.Flags.HTTPSEnabled {
+		certFile := "cert.pem"
+		keyFile := "key.pem"
+		logger.Sugar.Info("Starting HTTPS server", zap.String("address", handlers.Flags.RunAddr))
+		log.Fatal(http.ListenAndServeTLS(handlers.Flags.RunAddr, certFile, keyFile, r))
+	} else {
+		logger.Sugar.Info("Starting HTTP server", zap.String("address", handlers.Flags.RunAddr))
+		log.Fatal(http.ListenAndServe(handlers.Flags.RunAddr, r))
+	}
 }

@@ -15,6 +15,7 @@ type Flags struct {
 	BaseShortAddr      string // Базовый URL для сокращенных ссылок.
 	URLStorageFilePath string // Путь к файлу для хранения URL (если используется файловое хранилище).
 	DataBaseDSN        string // DSN (Data Source Name) для подключения к базе данных.
+	HTTPSEnabled       bool   // Возможность подключения к HTTPS-серверу
 }
 
 // String возвращает строковое представление текущих параметров конфигурации.
@@ -33,6 +34,7 @@ func Init() *Flags {
 	base := flag.String("b", "http://localhost:8080", "Base shorten url")
 	storagePath := flag.String("f", "", "URL storage path")
 	dataBase := flag.String("d", "", "Database connection address")
+	httpsEnabled := flag.Bool("s", false, "Enable HTTPS")
 	flag.Parse()
 
 	// Переопределение значений из переменных окружения, если они заданы.
@@ -48,6 +50,9 @@ func Init() *Flags {
 	if envDataBase := os.Getenv("DATABASE_DSN"); envDataBase != "" {
 		*dataBase = envDataBase
 	}
+	if envHTTPSEnabled := os.Getenv("ENABLE_HTTPS"); envHTTPSEnabled == "true" {
+		*httpsEnabled = true
+	}
 
 	// Возвращает инициализированную структуру Flags.
 	return &Flags{
@@ -55,5 +60,6 @@ func Init() *Flags {
 		BaseShortAddr:      *base,
 		URLStorageFilePath: *storagePath,
 		DataBaseDSN:        *dataBase,
+		HTTPSEnabled:       *httpsEnabled,
 	}
 }

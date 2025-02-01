@@ -1,3 +1,5 @@
+//go:build !test
+
 /*
 Package staticlint реализует multichecker для анализа Go-кода.
 

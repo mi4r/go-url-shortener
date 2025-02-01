@@ -12,6 +12,7 @@ import (
 func TestCompressWriter(t *testing.T) {
 	rr := httptest.NewRecorder()
 	cw := newCompressWriter(rr)
+	_ = cw.Header()
 
 	// Установка заголовка
 	cw.WriteHeader(http.StatusOK)
