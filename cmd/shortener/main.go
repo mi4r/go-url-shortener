@@ -5,6 +5,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
@@ -23,6 +24,35 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
+var (
+	// buildVersion содержит версию приложения
+	buildVersion string
+	// buildDate содержит дату сборки приложения
+	buildDate string
+	// buildCommit содержит коммит сборки
+	buildCommit string
+)
+
+// PrintBuildConfig выводит установленные и неустановленные флаги линковщика:
+// buildVersion, buildDate, buildCommit
+func PrintBuildConfig() {
+	version := "N/A"
+	date := "N/A"
+	commit := "N/A"
+	if buildVersion != "" {
+		version = buildVersion
+	}
+	if buildDate != "" {
+		date = buildDate
+	}
+	if buildCommit != "" {
+		commit = buildCommit
+	}
+	fmt.Printf("Build version: %s\n", version)
+	fmt.Printf("Build date: %s\n", date)
+	fmt.Printf("Build commit: %s\n", commit)
+}
+
 // main является точкой входа в приложение. Оно выполняет следующие задачи:
 // - Инициализирует логгер.
 // - Загружает конфигурацию.
@@ -30,6 +60,7 @@ import (
 // - Регистрирует маршруты HTTP.
 // - Запускает HTTP-сервер.
 func main() {
+	PrintBuildConfig()
 	// Инициализация логгера.
 	lgr, err := zap.NewProduction()
 	if err != nil {
@@ -71,12 +102,6 @@ func main() {
 	r := chi.NewRouter()
 	r.Use(logger.LoggingMiddleware)    // Логирование запросов.
 	r.Use(compress.CompressMiddleware) // Сжатие ответов.
-	// r.Mount("/debug/pprof", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	// 	http.DefaultServeMux.ServeHTTP(w, r)
-	// }))
-
-	// Роуты для pprof (профилирования).
-	// r.HandleFunc("/debug/pprof/*", http.DefaultServeMux.ServeHTTP)
 
 	// Основные маршруты API.
 	r.Route("/", func(r chi.Router) {
