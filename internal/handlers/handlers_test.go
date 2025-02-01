@@ -128,7 +128,9 @@ func TestUserURLsHandler(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	auth.SetUserCookie(w, "userID")
-	cookies := w.Result().Cookies()
+	resp := w.Result()
+	defer resp.Body.Close()
+	cookies := resp.Cookies()
 	if len(cookies) == 0 {
 		t.Fatal("No cookie was set")
 	}
@@ -137,8 +139,6 @@ func TestUserURLsHandler(t *testing.T) {
 	handler := UserURLsHandler(mockStorage)
 	handler.ServeHTTP(w, req)
 
-	resp := w.Result()
-	defer resp.Body.Close()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 }
 
@@ -184,8 +184,10 @@ func TestDeleteUserURLsHandler(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	auth.SetUserCookie(w, "userID")
-	cookies := w.Result().Cookies()
-	defer w.Result().Body.Close()
+	resp := w.Result()
+	defer resp.Body.Close()
+	cookies := resp.Cookies()
+
 	if len(cookies) == 0 {
 		t.Fatal("No cookie was set")
 	}
