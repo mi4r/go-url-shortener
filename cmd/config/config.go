@@ -20,8 +20,8 @@ type Flags struct {
 
 // String возвращает строковое представление текущих параметров конфигурации.
 func (f *Flags) String() string {
-	return fmt.Sprintf("RunAddr: %s, BaseShortAddr: %s, URLStorageFileName: %s, DataBaseDSN: %s, HTTPSEnabled: %t",
-		f.RunAddr, f.BaseShortAddr, f.URLStorageFilePath, f.DataBaseDSN, f.HTTPSEnabled)
+	return fmt.Sprintf("RunAddr: %s, BaseShortAddr: %s, URLStorageFileName: %s, DataBaseDSN: %s",
+		f.RunAddr, f.BaseShortAddr, f.URLStorageFilePath, f.DataBaseDSN)
 }
 
 // Init инициализирует параметры конфигурации из флагов командной строки, переменных окружения и значений по умолчанию.
