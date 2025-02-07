@@ -4,7 +4,6 @@
 package config
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -68,31 +67,31 @@ func Init() *Flags {
 		HTTPSEnabled:       *httpsEnabled,
 	}
 
-	if *configFile != "" {
-		file, err := os.Open(*configFile)
-		if err == nil {
-			defer file.Close()
-			decoder := json.NewDecoder(file)
-			var fileConfig Flags
-			if err := decoder.Decode(&fileConfig); err == nil {
-				if *addr == "localhost:8080" && fileConfig.RunAddr != "" {
-					config.RunAddr = fileConfig.RunAddr
-				}
-				if *base == "http://localhost:8080" && fileConfig.BaseShortAddr != "" {
-					config.BaseShortAddr = fileConfig.BaseShortAddr
-				}
-				if *storagePath == "" && fileConfig.URLStorageFilePath != "" {
-					config.URLStorageFilePath = fileConfig.URLStorageFilePath
-				}
-				if *dataBase == "" && fileConfig.DataBaseDSN != "" {
-					config.DataBaseDSN = fileConfig.DataBaseDSN
-				}
-				if !*httpsEnabled && fileConfig.HTTPSEnabled {
-					config.HTTPSEnabled = true
-				}
-			}
-		}
-	}
+	// if *configFile != "" {
+	// 	file, err := os.Open(*configFile)
+	// 	if err == nil {
+	// 		defer file.Close()
+	// 		decoder := json.NewDecoder(file)
+	// 		var fileConfig Flags
+	// 		if err := decoder.Decode(&fileConfig); err == nil {
+	// 			if *addr == "localhost:8080" && fileConfig.RunAddr != "" {
+	// 				config.RunAddr = fileConfig.RunAddr
+	// 			}
+	// 			if *base == "http://localhost:8080" && fileConfig.BaseShortAddr != "" {
+	// 				config.BaseShortAddr = fileConfig.BaseShortAddr
+	// 			}
+	// 			if *storagePath == "" && fileConfig.URLStorageFilePath != "" {
+	// 				config.URLStorageFilePath = fileConfig.URLStorageFilePath
+	// 			}
+	// 			if *dataBase == "" && fileConfig.DataBaseDSN != "" {
+	// 				config.DataBaseDSN = fileConfig.DataBaseDSN
+	// 			}
+	// 			if !*httpsEnabled && fileConfig.HTTPSEnabled {
+	// 				config.HTTPSEnabled = true
+	// 			}
+	// 		}
+	// 	}
+	// }
 
 	return &config
 }
