@@ -11,11 +11,11 @@ import (
 
 // Flags представляет конфигурационные параметры приложения.
 type Flags struct {
-	RunAddr            string `json:"server_address"`    // Адрес и порт для запуска сервера.
-	BaseShortAddr      string `json:"base_url"`          // Базовый URL для сокращенных ссылок.
-	URLStorageFilePath string `json:"file_storage_path"` // Путь к файлу для хранения URL (если используется файловое хранилище).
-	DataBaseDSN        string `json:"database_dsn"`      // DSN (Data Source Name) для подключения к базе данных.
-	HTTPSEnabled       bool   `json:"enable_https"`      // Возможность подключения к HTTPS-серверу
+	RunAddr            string // Адрес и порт для запуска сервера.
+	BaseShortAddr      string // Базовый URL для сокращенных ссылок.
+	URLStorageFilePath string // Путь к файлу для хранения URL (если используется файловое хранилище).
+	DataBaseDSN        string // DSN (Data Source Name) для подключения к базе данных.
+	HTTPSEnabled       bool   // Возможность подключения к HTTPS-серверу
 }
 
 // String возвращает строковое представление текущих параметров конфигурации.
