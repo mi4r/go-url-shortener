@@ -36,7 +36,7 @@ func Init() *Flags {
 	storagePath := flag.String("f", "", "URL storage path")
 	dataBase := flag.String("d", "", "Database connection address")
 	httpsEnabled := flag.Bool("s", false, "Enable HTTPS")
-	configFile := flag.String("c", "", "Path to JSON config file")
+	// configFile := flag.String("c", "", "Path to JSON config file")
 	flag.Parse()
 
 	// Переопределение значений из переменных окружения, если они заданы.
@@ -55,9 +55,9 @@ func Init() *Flags {
 	if envHTTPSEnabled := os.Getenv("ENABLE_HTTPS"); envHTTPSEnabled == "true" {
 		*httpsEnabled = true
 	}
-	if envConfigFile := os.Getenv("CONFIG"); envConfigFile != "" {
-		*configFile = envConfigFile
-	}
+	// if envConfigFile := os.Getenv("CONFIG"); envConfigFile != "" {
+	// 	*configFile = envConfigFile
+	// }
 
 	config := Flags{
 		RunAddr:            *addr,
