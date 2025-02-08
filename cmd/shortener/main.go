@@ -5,13 +5,19 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/mi4r/go-url-shortener/cmd/config"
 	"go.uber.org/zap"
+	"golang.org/x/term"
 
 	"github.com/mi4r/go-url-shortener/internal/compress"
 	"github.com/mi4r/go-url-shortener/internal/handlers"
@@ -53,6 +59,11 @@ func PrintBuildConfig() {
 	fmt.Printf("Build commit: %s\n", commit)
 }
 
+// isTerminal проверяет сигнал на терминальность
+func isTerminal(f *os.File) bool {
+	return term.IsTerminal(int(f.Fd()))
+}
+
 // main является точкой входа в приложение. Оно выполняет следующие задачи:
 // - Инициализирует логгер.
 // - Загружает конфигурацию.
@@ -62,15 +73,10 @@ func PrintBuildConfig() {
 func main() {
 	PrintBuildConfig()
 	// Инициализация логгера.
-	lgr, err := zap.NewProduction()
+	lgr, err := zap.NewDevelopment()
 	if err != nil {
 		log.Fatalf("can't initialize zap logger: %v", err)
 	}
-	defer func() {
-		if err := lgr.Sync(); err != nil {
-			logger.Sugar.Error(err)
-		}
-	}()
 
 	logger.Sugar = *lgr.Sugar()
 
@@ -123,14 +129,40 @@ func main() {
 	r.Get("/ping", handlers.PingHandler(storageImpl)) // Проверка доступности хранилища.
 	r.Mount("/debug", profiler.Profiler())
 
-	// Запуск сервера.
-	if handlers.Flags.HTTPSEnabled {
-		certFile := "cert.pem"
-		keyFile := "key.pem"
-		logger.Sugar.Info("Starting HTTPS server", zap.String("address", handlers.Flags.RunAddr))
-		log.Fatal(http.ListenAndServeTLS(handlers.Flags.RunAddr, certFile, keyFile, r))
-	} else {
-		logger.Sugar.Info("Starting HTTP server", zap.String("address", handlers.Flags.RunAddr))
-		log.Fatal(http.ListenAndServe(handlers.Flags.RunAddr, r))
+	srv := &http.Server{
+		Addr:    handlers.Flags.RunAddr,
+		Handler: r,
 	}
+
+	shutdownSig := make(chan os.Signal, 1)
+	signal.Notify(shutdownSig, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
+
+	// Запуск сервера.
+	go func() {
+		if handlers.Flags.HTTPSEnabled {
+			certFile := "cert.pem"
+			keyFile := "key.pem"
+			logger.Sugar.Info("Starting HTTPS server", zap.String("address", handlers.Flags.RunAddr))
+			if err := srv.ListenAndServeTLS(certFile, keyFile); err != nil && err != http.ErrServerClosed {
+				log.Fatalf("Could not start server: %s\n", err)
+			}
+		} else {
+			logger.Sugar.Info("Starting HTTP server", zap.String("address", handlers.Flags.RunAddr))
+			if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				log.Fatalf("Could not start server: %s\n", err)
+			}
+		}
+	}()
+
+	<-shutdownSig
+	logger.Sugar.Info("Shutting down server...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		logger.Sugar.Fatal("Server forced to shutdown:", err)
+	}
+
+	logger.Sugar.Info("Server exited properly")
 }
