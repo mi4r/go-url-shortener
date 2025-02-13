@@ -7,7 +7,7 @@ import (
 	"syscall"
 )
 
-var (
+const (
 	// CertFile - сертификационный файл для https подключения
 	CertFile = "cert.pem"
 	// KeyFile - ключ для https подключения
