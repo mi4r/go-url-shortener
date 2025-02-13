@@ -9,15 +9,12 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/mi4r/go-url-shortener/cmd/config"
+	httpsconf "github.com/mi4r/go-url-shortener/cmd/https_conf"
 	"go.uber.org/zap"
-	"golang.org/x/term"
 
 	"github.com/mi4r/go-url-shortener/internal/compress"
 	"github.com/mi4r/go-url-shortener/internal/handlers"
@@ -57,11 +54,6 @@ func PrintBuildConfig() {
 	fmt.Printf("Build version: %s\n", version)
 	fmt.Printf("Build date: %s\n", date)
 	fmt.Printf("Build commit: %s\n", commit)
-}
-
-// isTerminal проверяет сигнал на терминальность
-func isTerminal(f *os.File) bool {
-	return term.IsTerminal(int(f.Fd()))
 }
 
 // main является точкой входа в приложение. Оно выполняет следующие задачи:
@@ -134,19 +126,17 @@ func main() {
 		Handler: r,
 	}
 
-	shutdownSig := make(chan os.Signal, 1)
-	signal.Notify(shutdownSig, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
+	signalChan := httpsconf.MakeSigChan()
 
 	// Запуск сервера.
 	go func() {
-		if handlers.Flags.HTTPSEnabled {
-			certFile := "cert.pem"
-			keyFile := "key.pem"
+		switch {
+		case handlers.Flags.HTTPSEnabled:
 			logger.Sugar.Info("Starting HTTPS server", zap.String("address", handlers.Flags.RunAddr))
-			if err := srv.ListenAndServeTLS(certFile, keyFile); err != nil && err != http.ErrServerClosed {
+			if err := srv.ListenAndServeTLS(httpsconf.CertFile, httpsconf.KeyFile); err != nil && err != http.ErrServerClosed {
 				log.Fatalf("Could not start server: %s\n", err)
 			}
-		} else {
+		default:
 			logger.Sugar.Info("Starting HTTP server", zap.String("address", handlers.Flags.RunAddr))
 			if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 				log.Fatalf("Could not start server: %s\n", err)
@@ -154,10 +144,10 @@ func main() {
 		}
 	}()
 
-	<-shutdownSig
+	<-signalChan
 	logger.Sugar.Info("Shutting down server...")
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	storageImpl.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	if err := srv.Shutdown(ctx); err != nil {
