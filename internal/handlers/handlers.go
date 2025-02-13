@@ -319,8 +319,9 @@ func UserURLsHandler(storageImpl storage.Storage) http.HandlerFunc {
 		// Проверяем подлинность куки
 		userID, valid := auth.ValidateUserCookie(req)
 		if !valid {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
+			// http.Error(w, "Unauthorized", http.StatusNoContent)
+			userID = auth.GenerateUserID()
+			auth.SetUserCookie(w, userID)
 		}
 
 		// Получаем URL'ы пользователя из хранилища
