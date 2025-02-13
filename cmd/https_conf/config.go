@@ -7,12 +7,11 @@ import (
 	"syscall"
 )
 
-const (
-	// CertFile - сертификационный файл для https подключения
-	CertFile = "cert.pem"
-	// KeyFile - ключ для https подключения
-	KeyFile = "key.pem"
-)
+// CertFile - сертификационный файл для https подключения
+const CertFile = "cert.pem"
+
+// KeyFile - ключ для https подключения
+const KeyFile = "key.pem"
 
 // MakeSigChan создает канал, принимающий сигналы
 func MakeSigChan() chan os.Signal {
