@@ -8,8 +8,10 @@ import (
 )
 
 var (
-	CertFile = "cert.pem" // CertFile - сертификационный файл для https подключения
-	KeyFile  = "key.pem"  // KeyFile - ключ для https подключения
+	// CertFile - сертификационный файл для https подключения
+	CertFile = "cert.pem"
+	// KeyFile - ключ для https подключения
+	KeyFile = "key.pem"
 )
 
 // MakeSigChan создает канал, принимающий сигналы
