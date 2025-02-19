@@ -24,6 +24,10 @@ type Storage interface {
 	Close() error
 	// MarkURLsAsDeleted помечает список URL как удаленные для указанного пользователя.
 	MarkURLsAsDeleted(userID string, shortIDs []string) error
+	// URLCount возвращает число всех загруженных URL
+	URLCount() (int, error)
+	// UserCount возвращает количество пользователей в хранилище
+	UserCount() (int, error)
 }
 
 // Pinger определяет интерфейс для проверки доступности соединения.

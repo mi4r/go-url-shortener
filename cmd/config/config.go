@@ -17,12 +17,13 @@ type Flags struct {
 	URLStorageFilePath string `json:"file_storage_path"` // Путь к файлу для хранения URL (если используется файловое хранилище).
 	DataBaseDSN        string `json:"database_dsn"`      // DSN (Data Source Name) для подключения к базе данных.
 	HTTPSEnabled       bool   `json:"enable_https"`      // Возможность подключения к HTTPS-серверу
+	TrustedSubnet      string `json:"trusted_subnet"`    // Доверенная подсеть сервера
 }
 
 // String возвращает строковое представление текущих параметров конфигурации.
 func (f *Flags) String() string {
-	return fmt.Sprintf("RunAddr: %s, BaseShortAddr: %s, URLStorageFileName: %s, DataBaseDSN: %s, HTTPSEnabled: %t",
-		f.RunAddr, f.BaseShortAddr, f.URLStorageFilePath, f.DataBaseDSN, f.HTTPSEnabled)
+	return fmt.Sprintf("RunAddr: %s, BaseShortAddr: %s, URLStorageFileName: %s, DataBaseDSN: %s, HTTPSEnabled: %t, TrustedSubnet: %s",
+		f.RunAddr, f.BaseShortAddr, f.URLStorageFilePath, f.DataBaseDSN, f.HTTPSEnabled, f.TrustedSubnet)
 }
 
 // Init инициализирует параметры конфигурации из флагов командной строки, переменных окружения и значений по умолчанию.
@@ -38,6 +39,7 @@ func Init() *Flags {
 	storagePath := flag.String("f", "", "URL storage path")
 	dataBase := flag.String("d", "", "Database connection address")
 	httpsEnabled := flag.Bool("s", false, "Enable HTTPS")
+	trustSubnet := flag.String("t", "", "Trusted server subnet")
 	configFile := flag.String("c", "", "Path to JSON config file")
 	flag.Parse()
 
@@ -57,6 +59,9 @@ func Init() *Flags {
 	if envHTTPSEnabled := os.Getenv("ENABLE_HTTPS"); envHTTPSEnabled == "true" {
 		*httpsEnabled = true
 	}
+	if envTrustSubnet := os.Getenv("TRUSTED_SUBNET"); envTrustSubnet != "" {
+		*trustSubnet = envTrustSubnet
+	}
 	if envConfigFile := os.Getenv("CONFIG"); envConfigFile != "" {
 		*configFile = envConfigFile
 	}
@@ -67,6 +72,7 @@ func Init() *Flags {
 		URLStorageFilePath: *storagePath,
 		DataBaseDSN:        *dataBase,
 		HTTPSEnabled:       *httpsEnabled,
+		TrustedSubnet:      *trustSubnet,
 	}
 
 	if *configFile != "" {
@@ -90,6 +96,9 @@ func Init() *Flags {
 				}
 				if !*httpsEnabled && fileConfig.HTTPSEnabled {
 					config.HTTPSEnabled = true
+				}
+				if *trustSubnet == "" && fileConfig.TrustedSubnet != "" {
+					config.TrustedSubnet = fileConfig.TrustedSubnet
 				}
 			}
 		}

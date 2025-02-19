@@ -91,3 +91,13 @@ func (s *MemoryStorage) MarkURLsAsDeleted(userID string, ids []string) error {
 	logger.Sugar.Info(s.data)
 	return nil
 }
+
+// URLCount возвращает число всех загруженных URL
+func (s *MemoryStorage) URLCount() (int, error) {
+	return len(s.data), nil
+}
+
+// UserCount возвращает количество пользователей в хранилище
+func (s *MemoryStorage) UserCount() (int, error) {
+	return len(s.userURLs), nil
+}

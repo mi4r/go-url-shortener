@@ -186,3 +186,13 @@ func (s *FileStorage) saveAllToFile() error {
 	}
 	return nil
 }
+
+// URLCount возвращает число всех загруженных URL
+func (s *FileStorage) URLCount() (int, error) {
+	return len(s.data), nil
+}
+
+// UserCount возвращает количество пользователей в хранилище
+func (s *FileStorage) UserCount() (int, error) {
+	return len(s.userURLs), nil
+}

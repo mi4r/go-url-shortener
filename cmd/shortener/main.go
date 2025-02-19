@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"time"
 
@@ -96,6 +97,15 @@ func main() {
 	}
 	defer storageImpl.Close()
 
+	var trustedSubnet *net.IPNet
+	if handlers.Flags.TrustedSubnet != "" {
+		_, subnet, err := net.ParseCIDR(handlers.Flags.TrustedSubnet)
+		if err != nil {
+			logger.Sugar.Fatalf("Invalid trusted subnet: %v", err)
+		}
+		trustedSubnet = subnet
+	}
+
 	// Инициализация маршрутизатора.
 	r := chi.NewRouter()
 	r.Use(logger.LoggingMiddleware)    // Логирование запросов.
@@ -116,6 +126,9 @@ func main() {
 		r.Route("/user", func(r chi.Router) {
 			r.Get("/urls", handlers.UserURLsHandler(storageImpl))          // Получение всех URL пользователя.
 			r.Delete("/urls", handlers.DeleteUserURLsHandler(storageImpl)) // Удаление URL пользователя.
+		})
+		r.Route("/internal", func(r chi.Router) {
+			r.Get("/stats", handlers.InternalStatsHandler(storageImpl, trustedSubnet))
 		})
 	})
 	r.Get("/ping", handlers.PingHandler(storageImpl)) // Проверка доступности хранилища.

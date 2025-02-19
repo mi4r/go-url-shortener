@@ -3,6 +3,7 @@ package handlers
 import (
 	"bytes"
 	"encoding/json"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -197,4 +198,52 @@ func TestDeleteUserURLsHandler(t *testing.T) {
 	handler.ServeHTTP(w, req)
 
 	mockStorage.AssertCalled(t, "MarkURLsAsDeleted", "userID", []string{"id1", "id2"})
+}
+
+func TestStatsHandler(t *testing.T) {
+	mockStorage := new(mocks.MockStorage)
+
+	// Ожидаем вызовы методов с заданными результатами
+	mockStorage.On("URLCount").Return(100, nil)
+	mockStorage.On("UserCount").Return(10, nil)
+
+	_, trustedSubnet, _ := net.ParseCIDR("192.168.0.0/24")
+
+	req := httptest.NewRequest(http.MethodGet, "/api/internal/stats", nil)
+	req.Header.Set("X-Real-IP", "192.168.0.10")
+
+	rr := httptest.NewRecorder()
+	handler := InternalStatsHandler(mockStorage, trustedSubnet)
+	handler.ServeHTTP(rr, req)
+
+	// Проверка кода ответа
+	assert.Equal(t, http.StatusOK, rr.Code)
+
+	// Проверка тела ответа
+	var response StatsResponse
+	err := json.NewDecoder(rr.Body).Decode(&response)
+	assert.NoError(t, err)
+	assert.Equal(t, 100, response.URLCnt)
+	assert.Equal(t, 10, response.UserCnt)
+
+	// Проверка вызовов
+	mockStorage.AssertCalled(t, "URLCount")
+	mockStorage.AssertCalled(t, "UserCount")
+	mockStorage.AssertExpectations(t)
+}
+
+func TestStatsHandler_Forbidden(t *testing.T) {
+	mockStorage := new(mocks.MockStorage)
+	_, trustedSubnet, _ := net.ParseCIDR("192.168.0.0/24")
+
+	req := httptest.NewRequest(http.MethodGet, "/api/internal/stats", nil)
+	req.Header.Set("X-Real-IP", "10.0.0.5") // IP вне доверенной подсети
+
+	rr := httptest.NewRecorder()
+	handler := InternalStatsHandler(mockStorage, trustedSubnet)
+	handler.ServeHTTP(rr, req)
+
+	assert.Equal(t, http.StatusForbidden, rr.Code)
+	mockStorage.AssertNotCalled(t, "URLCount")
+	mockStorage.AssertNotCalled(t, "UserCount")
 }

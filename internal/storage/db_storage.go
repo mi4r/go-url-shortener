@@ -235,3 +235,23 @@ func (s *DBStorage) MarkURLsAsDeleted(userID string, shortIDs []string) error {
 	}
 	return nil
 }
+
+// URLCount возвращает число всех загруженных URL
+func (s *DBStorage) URLCount() (int, error) {
+	var cnt int
+	err := s.Database.QueryRow(`SELECT COUNT(*) FROM urls;`).Scan(&cnt)
+	if err != nil {
+		return 0, err
+	}
+	return cnt, nil
+}
+
+// UserCount возвращает количество пользователей в хранилище
+func (s *DBStorage) UserCount() (int, error) {
+	var cnt int
+	err := s.Database.QueryRow(`SELECT COUNT(DISTINCT user_id) FROM urls;`).Scan(&cnt)
+	if err != nil {
+		return 0, err
+	}
+	return cnt, nil
+}

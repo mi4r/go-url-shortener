@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"strconv"
 	"testing"
 
 	"github.com/mi4r/go-url-shortener/internal/logger"
@@ -144,5 +145,108 @@ func TestMemoryStorage_Close(t *testing.T) {
 	err := s.Close()
 	if err != nil {
 		t.Errorf("close of storage is failed")
+	}
+}
+
+func TestURLCount(t *testing.T) {
+	tests := []struct {
+		name     string
+		dataSize int
+		want     int
+	}{
+		{
+			name:     "empty storage",
+			dataSize: 0,
+			want:     0,
+		},
+		{
+			name:     "single URL",
+			dataSize: 1,
+			want:     1,
+		},
+		{
+			name:     "multiple URLs",
+			dataSize: 5,
+			want:     5,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Создаём хранилище с тестовыми данными
+			storage := &MemoryStorage{
+				data: make(map[string]URL, tt.dataSize),
+			}
+
+			// Заполняем данными
+			for i := 0; i < tt.dataSize; i++ {
+				key := strconv.Itoa(i) // Генерируем уникальный ключ
+				storage.data[key] = URL{}
+			}
+
+			// Проверяем результат
+			got, err := storage.URLCount()
+			if err != nil {
+				t.Errorf("URLCount() error = %v, wantErr false", err)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("URLCount() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestUserCount(t *testing.T) {
+	tests := []struct {
+		name     string
+		userData map[string][]string
+		want     int
+	}{
+		{
+			name:     "no users",
+			userData: map[string][]string{},
+			want:     0,
+		},
+		{
+			name: "single user",
+			userData: map[string][]string{
+				"user1": {"url1", "url2"},
+			},
+			want: 1,
+		},
+		{
+			name: "multiple users",
+			userData: map[string][]string{
+				"user1": {"url1"},
+				"user2": {"url2"},
+				"user3": {"url3"},
+			},
+			want: 3,
+		},
+		{
+			name: "user without URLs",
+			userData: map[string][]string{
+				"user1": {},
+			},
+			want: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			storage := &MemoryStorage{
+				userURLs: tt.userData,
+			}
+
+			got, err := storage.UserCount()
+			if err != nil {
+				t.Errorf("UserCount() error = %v, wantErr false", err)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("UserCount() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
