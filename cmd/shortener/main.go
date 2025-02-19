@@ -5,12 +5,15 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/mi4r/go-url-shortener/cmd/config"
+	httpsconf "github.com/mi4r/go-url-shortener/cmd/https_conf"
 	"go.uber.org/zap"
 
 	"github.com/mi4r/go-url-shortener/internal/compress"
@@ -62,15 +65,10 @@ func PrintBuildConfig() {
 func main() {
 	PrintBuildConfig()
 	// Инициализация логгера.
-	lgr, err := zap.NewProduction()
+	lgr, err := zap.NewDevelopment()
 	if err != nil {
 		log.Fatalf("can't initialize zap logger: %v", err)
 	}
-	defer func() {
-		if err := lgr.Sync(); err != nil {
-			logger.Sugar.Error(err)
-		}
-	}()
 
 	logger.Sugar = *lgr.Sugar()
 
@@ -123,7 +121,38 @@ func main() {
 	r.Get("/ping", handlers.PingHandler(storageImpl)) // Проверка доступности хранилища.
 	r.Mount("/debug", profiler.Profiler())
 
-	// Запуск HTTP-сервера.
-	logger.Sugar.Info("Starting server", zap.String("address", handlers.Flags.RunAddr))
-	log.Fatal(http.ListenAndServe(handlers.Flags.RunAddr, r))
+	srv := &http.Server{
+		Addr:    handlers.Flags.RunAddr,
+		Handler: r,
+	}
+
+	signalChan := httpsconf.MakeSigChan()
+
+	// Запуск сервера.
+	go func() {
+		switch {
+		case handlers.Flags.HTTPSEnabled:
+			logger.Sugar.Info("Starting HTTPS server", zap.String("address", handlers.Flags.RunAddr))
+			if err := srv.ListenAndServeTLS(httpsconf.CertFile, httpsconf.KeyFile); err != nil && err != http.ErrServerClosed {
+				log.Fatalf("Could not start server: %s\n", err)
+			}
+		default:
+			logger.Sugar.Info("Starting HTTP server", zap.String("address", handlers.Flags.RunAddr))
+			if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				log.Fatalf("Could not start server: %s\n", err)
+			}
+		}
+	}()
+
+	<-signalChan
+	logger.Sugar.Info("Shutting down server...")
+	storageImpl.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		logger.Sugar.Fatal("Server forced to shutdown:", err)
+	}
+
+	logger.Sugar.Info("Server exited properly")
 }

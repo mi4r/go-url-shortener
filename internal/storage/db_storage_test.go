@@ -128,6 +128,11 @@ func TestDBStorage(t *testing.T) {
 			t.Errorf("MarkURLsAsDeleted failed: %v", err)
 		}
 
+		// err = storage.MarkURLsAsDeleted("user2", []string{"short1", "bad"})
+		// if err == nil {
+		// 	t.Errorf("MarkURLsAsDeleted should be failed")
+		// }
+
 		url, exists := storage.Get("short1")
 		if !exists || !url.DeletedFlag {
 			t.Errorf("expected URL to be marked as deleted")

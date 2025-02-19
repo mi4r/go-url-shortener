@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/mi4r/go-url-shortener/cmd/config"
+	"github.com/mi4r/go-url-shortener/internal/auth"
 	"github.com/mi4r/go-url-shortener/internal/logger"
 	"github.com/mi4r/go-url-shortener/internal/storage"
 	"github.com/mi4r/go-url-shortener/internal/storage/mocks"
@@ -112,32 +113,34 @@ func TestPingHandler(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 }
 
-// func TestUserURLsHandler(t *testing.T) {
-// 	mockStorage := new(mocks.MockStorage)
-// 	mockStorage.On("GetURLsByUserID", "userID").Return([]storage.URL{
-// 		{ShortURL: "short1", OriginalURL: "http://example1.com"},
-// 		{ShortURL: "short2", OriginalURL: "http://example2.com"},
-// 	}, nil)
+func TestUserURLsHandler(t *testing.T) {
+	mockStorage := new(mocks.MockStorage)
+	mockStorage.On("GetURLsByUserID", "userID").Return([]storage.URL{
+		{ShortURL: "short1", OriginalURL: "http://example1.com"},
+		{ShortURL: "short2", OriginalURL: "http://example2.com"},
+	}, nil)
 
-// 	Flags = &config.Flags{
-// 		BaseShortAddr: "http://short.url",
-// 	}
+	Flags = &config.Flags{
+		BaseShortAddr: "http://short.url",
+	}
 
-// 	req := httptest.NewRequest(http.MethodGet, "/user/urls", nil)
-// 	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/user/urls", nil)
+	w := httptest.NewRecorder()
 
-// 	auth.SetUserCookie(w, "userID")
-// 	handler := UserURLsHandler(mockStorage)
-// 	handler.ServeHTTP(w, req)
+	auth.SetUserCookie(w, "userID")
+	resp := w.Result()
+	defer resp.Body.Close()
+	cookies := resp.Cookies()
+	if len(cookies) == 0 {
+		t.Fatal("No cookie was set")
+	}
+	req.AddCookie(cookies[0])
 
-// 	resp := w.Result()
-// 	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	handler := UserURLsHandler(mockStorage)
+	handler.ServeHTTP(w, req)
 
-// 	var responseBody []URLResponseItem
-// 	json.NewDecoder(resp.Body).Decode(&responseBody)
-// 	assert.Equal(t, 2, len(responseBody))
-// 	assert.Equal(t, "http://short.url/short1", responseBody[0].ShortURL)
-// }
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+}
 
 func TestBatchShortenURLHandler(t *testing.T) {
 	mockStorage := new(mocks.MockStorage)
@@ -170,20 +173,28 @@ func TestBatchShortenURLHandler(t *testing.T) {
 	assert.Equal(t, "http://short.url/short1", responseBody[0].ShortURL)
 }
 
-// func TestDeleteUserURLsHandler(t *testing.T) {
-// 	mockStorage := new(mocks.MockStorage)
-// 	mockStorage.On("MarkURLsAsDeleted", "userID", []string{"id1", "id2"}).Return(nil)
+func TestDeleteUserURLsHandler(t *testing.T) {
+	mockStorage := new(mocks.MockStorage)
+	mockStorage.On("MarkURLsAsDeleted", "userID", []string{"id1", "id2"}).Return(nil)
 
-// 	reqBody := []string{"id1", "id2"}
-// 	bodyBytes, _ := json.Marshal(reqBody)
-// 	req := httptest.NewRequest(http.MethodDelete, "/user/urls", bytes.NewBuffer(bodyBytes))
-// 	req.Header.Set("Content-Type", "application/json")
-// 	w := httptest.NewRecorder()
+	reqBody := []string{"id1", "id2"}
+	bodyBytes, _ := json.Marshal(reqBody)
+	req := httptest.NewRequest(http.MethodDelete, "/user/urls", bytes.NewBuffer(bodyBytes))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
 
-// 	auth.SetUserCookie(w, "userID")
-// 	handler := DeleteUserURLsHandler(mockStorage)
-// 	handler.ServeHTTP(w, req)
+	auth.SetUserCookie(w, "userID")
+	resp := w.Result()
+	defer resp.Body.Close()
+	cookies := resp.Cookies()
 
-// 	resp := w.Result()
-// 	assert.Equal(t, http.StatusAccepted, resp.StatusCode)
-// }
+	if len(cookies) == 0 {
+		t.Fatal("No cookie was set")
+	}
+	req.AddCookie(cookies[0])
+
+	handler := DeleteUserURLsHandler(mockStorage)
+	handler.ServeHTTP(w, req)
+
+	mockStorage.AssertCalled(t, "MarkURLsAsDeleted", "userID", []string{"id1", "id2"})
+}

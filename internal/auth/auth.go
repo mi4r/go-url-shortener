@@ -67,3 +67,13 @@ func ValidateUserCookie(r *http.Request) (string, bool) {
 
 	return "", false
 }
+
+// UpdateCookie создает или обновляет куки
+func UpdateCookie(w http.ResponseWriter, r *http.Request) string {
+	userID, valid := ValidateUserCookie(r)
+	if !valid {
+		userID = GenerateUserID()
+		SetUserCookie(w, userID)
+	}
+	return userID
+}

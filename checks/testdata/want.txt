@@ -1,0 +1,1 @@
+bad.go:3: This comntains a tpyo. -> This contains a typo.

@@ -72,11 +72,7 @@ func ShortenURLHandler(storageImpl storage.Storage) http.HandlerFunc {
 			return
 		}
 
-		userID, valid := auth.ValidateUserCookie(req)
-		if !valid {
-			userID = auth.GenerateUserID()
-			auth.SetUserCookie(w, userID)
-		}
+		userID := auth.UpdateCookie(w, req)
 
 		body, err := io.ReadAll(req.Body)
 		if err != nil || len(body) == 0 {
@@ -138,11 +134,7 @@ func APIShortenURLHandler(storageImpl storage.Storage) http.HandlerFunc {
 			return
 		}
 
-		userID, valid := auth.ValidateUserCookie(req)
-		if !valid {
-			userID = auth.GenerateUserID()
-			auth.SetUserCookie(w, userID)
-		}
+		userID := auth.UpdateCookie(w, req)
 
 		var requestBody ShortenRequest
 
@@ -217,11 +209,7 @@ func BatchShortenURLHandler(storageImpl storage.Storage) http.HandlerFunc {
 			return
 		}
 
-		userID, valid := auth.ValidateUserCookie(req)
-		if !valid {
-			userID = auth.GenerateUserID()
-			auth.SetUserCookie(w, userID)
-		}
+		userID := auth.UpdateCookie(w, req)
 
 		var batchRequest []BatchRequestItem
 
@@ -316,12 +304,7 @@ func PingHandler(storageImpl storage.Storage) http.HandlerFunc {
 // UserURLsHandler возвращает все URL, сокращенные текущим пользователем.
 func UserURLsHandler(storageImpl storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		// Проверяем подлинность куки
-		userID, valid := auth.ValidateUserCookie(req)
-		if !valid {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
+		userID := auth.UpdateCookie(w, req)
 
 		// Получаем URL'ы пользователя из хранилища
 		urls, err := storageImpl.GetURLsByUserID(userID)
@@ -357,11 +340,7 @@ func UserURLsHandler(storageImpl storage.Storage) http.HandlerFunc {
 // DeleteUserURLsHandler удаляет (логически) список URL, принадлежащих пользователю.
 func DeleteUserURLsHandler(storageImpl storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		userID, valid := auth.ValidateUserCookie(req)
-		if !valid {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
+		userID := auth.UpdateCookie(w, req)
 
 		var ids []string
 		decoder := json.NewDecoder(req.Body)
