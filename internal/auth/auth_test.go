@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGenerateUserID(t *testing.T) {
@@ -114,4 +115,20 @@ func TestValidateUserCookie_InvalidFormat(t *testing.T) {
 	if valid {
 		t.Error("Expected cookie to be invalid due to incorrect format, but it was valid")
 	}
+}
+
+func TestUpdateCookie(t *testing.T) {
+	recorder := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	userID := UpdateCookie(recorder, req)
+	assert.NotEmpty(t, userID, "userID должен быть сгенерирован")
+
+	cookies := recorder.Result().Cookies()
+	assert.Len(t, cookies, 1, "Должна быть установлена одна кука")
+
+	reqWithCookie := httptest.NewRequest(http.MethodGet, "/", nil)
+	reqWithCookie.AddCookie(cookies[0])
+	updatedUserID := UpdateCookie(httptest.NewRecorder(), reqWithCookie)
+	assert.Equal(t, userID, updatedUserID, "userID должен совпадать при валидной куке")
 }

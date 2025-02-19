@@ -120,3 +120,25 @@ func (m *MockStorage) Ping() error {
 	args := m.Called()
 	return args.Error(0)
 }
+
+// URLCount returns count of shorten URLs
+//
+// Returns:
+//
+//	-int: number of URLs
+//	- error: An error if the operation fails.
+func (m *MockStorage) URLCount() (int, error) {
+	args := m.Called()
+	return args.Int(0), args.Error(1)
+}
+
+// UserCount returns count of users
+//
+// Returns:
+//
+//	-int: number of users
+//	- error: An error if the operation fails.
+func (m *MockStorage) UserCount() (int, error) {
+	args := m.Called()
+	return args.Int(0), args.Error(1)
+}

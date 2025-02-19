@@ -2,10 +2,13 @@ package storage
 
 import (
 	"database/sql"
+	"errors"
 	"testing"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/mi4r/go-url-shortener/internal/logger"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )
 
@@ -145,4 +148,124 @@ func TestDBStorage(t *testing.T) {
 			t.Errorf("Ping failed: %v", err)
 		}
 	})
+}
+
+func TestDBStorage_URLCount(t *testing.T) {
+	// Создаём мок базы данных
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	// Создаём экземпляр DBStorage с моком базы данных
+	storage := &DBStorage{Database: db}
+
+	tests := []struct {
+		name    string
+		mock    func()
+		want    int
+		wantErr bool
+	}{
+		{
+			name: "successful count",
+			mock: func() {
+				// Ожидаем запрос и возвращаем результат
+				rows := sqlmock.NewRows([]string{"count"}).AddRow(10)
+				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM urls;`).WillReturnRows(rows)
+			},
+			want:    10,
+			wantErr: false,
+		},
+		{
+			name: "database error",
+			mock: func() {
+				// Ожидаем запрос и возвращаем ошибку
+				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM urls;`).WillReturnError(errors.New("db error"))
+			},
+			want:    0,
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Настраиваем мок
+			tt.mock()
+
+			// Вызываем тестируемую функцию
+			got, err := storage.URLCount()
+
+			// Проверяем ошибку
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+
+			// Проверяем результат
+			require.Equal(t, tt.want, got)
+
+			// Убеждаемся, что все ожидания выполнены
+			require.NoError(t, mock.ExpectationsWereMet())
+		})
+	}
+}
+
+func TestDBStorage_UserCount(t *testing.T) {
+	// Создаём мок базы данных
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	// Создаём экземпляр DBStorage с моком базы данных
+	storage := &DBStorage{Database: db}
+
+	tests := []struct {
+		name    string
+		mock    func()
+		want    int
+		wantErr bool
+	}{
+		{
+			name: "successful count",
+			mock: func() {
+				// Ожидаем запрос и возвращаем результат
+				rows := sqlmock.NewRows([]string{"count"}).AddRow(5)
+				mock.ExpectQuery(`SELECT COUNT\(DISTINCT user_id\) FROM urls;`).WillReturnRows(rows)
+			},
+			want:    5,
+			wantErr: false,
+		},
+		{
+			name: "database error",
+			mock: func() {
+				// Ожидаем запрос и возвращаем ошибку
+				mock.ExpectQuery(`SELECT COUNT\(DISTINCT user_id\) FROM urls;`).WillReturnError(errors.New("db error"))
+			},
+			want:    0,
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Настраиваем мок
+			tt.mock()
+
+			// Вызываем тестируемую функцию
+			got, err := storage.UserCount()
+
+			// Проверяем ошибку
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+
+			// Проверяем результат
+			require.Equal(t, tt.want, got)
+
+			// Убеждаемся, что все ожидания выполнены
+			require.NoError(t, mock.ExpectationsWereMet())
+		})
+	}
 }
