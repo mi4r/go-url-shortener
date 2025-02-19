@@ -409,6 +409,7 @@ func DeleteUserURLsHandler(storageImpl storage.Storage) http.HandlerFunc {
 	}
 }
 
+// InternalStatsHandler возвращает количество пользователей и сокращенных URL в сервисе.
 func InternalStatsHandler(storageImpl storage.Storage, trustedSubnet *net.IPNet) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ipStr := r.Header.Get("X-Real-IP")

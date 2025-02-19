@@ -124,7 +124,9 @@ func TestUpdateCookie(t *testing.T) {
 	userID := UpdateCookie(recorder, req)
 	assert.NotEmpty(t, userID, "userID должен быть сгенерирован")
 
-	cookies := recorder.Result().Cookies()
+	resp := recorder.Result()
+	defer resp.Body.Close()
+	cookies := resp.Cookies()
 	assert.Len(t, cookies, 1, "Должна быть установлена одна кука")
 
 	reqWithCookie := httptest.NewRequest(http.MethodGet, "/", nil)
