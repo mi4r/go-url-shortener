@@ -14,7 +14,6 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
-	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 type GRPCServer struct {
@@ -86,7 +85,7 @@ func (s *GRPCServer) BatchShorten(ctx context.Context, req *pb.BatchShortenReque
 	return &pb.BatchShortenResponse{Items: responseItems}, nil
 }
 
-func (s *GRPCServer) GetUserURLs(ctx context.Context, _ *emptypb.Empty) (*pb.GetUserURLsResponse, error) {
+func (s *GRPCServer) GetUserURLs(ctx context.Context, _ *pb.Empty) (*pb.GetUserURLsResponse, error) {
 	userID := getUserIDFromContext(ctx)
 	if userID == "" {
 		return nil, status.Error(codes.Unauthenticated, "missing user ID")
@@ -108,7 +107,7 @@ func (s *GRPCServer) GetUserURLs(ctx context.Context, _ *emptypb.Empty) (*pb.Get
 	return &pb.GetUserURLsResponse{Items: responseItems}, nil
 }
 
-func (s *GRPCServer) DeleteUserURLs(ctx context.Context, req *pb.DeleteUserURLsRequest) (*emptypb.Empty, error) {
+func (s *GRPCServer) DeleteUserURLs(ctx context.Context, req *pb.DeleteUserURLsRequest) (*pb.Empty, error) {
 	userID := getUserIDFromContext(ctx)
 	if userID == "" {
 		return nil, status.Error(codes.Unauthenticated, "missing user ID")
@@ -121,7 +120,7 @@ func (s *GRPCServer) DeleteUserURLs(ctx context.Context, req *pb.DeleteUserURLsR
 	return nil, nil
 }
 
-func (s *GRPCServer) Ping(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
+func (s *GRPCServer) Ping(ctx context.Context, _ *pb.Empty) (*pb.Empty, error) {
 	ok, err := s.service.Ping(ctx)
 	if !ok || err != nil {
 		return nil, status.Error(convertErrorToCode(err), err.Error())
