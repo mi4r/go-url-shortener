@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 package shortener;
-option go_package = "github.com/mi4r/go-url-shortener/internal/proto";
+option go_package = "github.com/mi4r/go-url-shortener/proto";
 
 service Shortener {
   rpc Shorten(ShortenRequest) returns (ShortenResponse);
