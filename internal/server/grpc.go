@@ -7,9 +7,11 @@ import (
 	"net"
 	"strings"
 
+	"github.com/mi4r/go-url-shortener/internal/auth"
 	pb "github.com/mi4r/go-url-shortener/internal/proto"
 	"github.com/mi4r/go-url-shortener/internal/service"
 	"github.com/mi4r/go-url-shortener/internal/storage"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
@@ -171,4 +173,27 @@ func convertErrorToCode(err error) codes.Code {
 	default:
 		return codes.Internal
 	}
+}
+
+func AuthInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+	md, _ := metadata.FromIncomingContext(ctx)
+	userIDs := md.Get("user-id")
+
+	var userID string
+	if len(userIDs) == 0 {
+		userID = auth.GenerateUserID()
+		md.Set("user-id", userID)
+	} else {
+		userID = userIDs[0]
+	}
+
+	ctx = context.WithValue(ctx, "userID", userID)
+	resp, err := handler(ctx, req)
+
+	if len(userIDs) == 0 {
+		header := metadata.Pairs("set-user-id", userID)
+		grpc.SetHeader(ctx, header)
+	}
+
+	return resp, err
 }

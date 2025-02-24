@@ -14,7 +14,9 @@ import (
 
 	"github.com/mi4r/go-url-shortener/cmd/config"
 	httpsconf "github.com/mi4r/go-url-shortener/cmd/https_conf"
+	pb "github.com/mi4r/go-url-shortener/internal/proto"
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
 
 	"github.com/mi4r/go-url-shortener/internal/handlers"
 	"github.com/mi4r/go-url-shortener/internal/logger"
@@ -126,11 +128,30 @@ func main() {
 		}
 	}()
 
+	grpcServer := grpc.NewServer(grpc.UnaryInterceptor(server.AuthInterceptor))
+	pb.RegisterShortenerServer(grpcServer, server.NewGRPCServer(
+		storageImpl,
+		handlers.Flags.BaseShortAddr,
+		trustedSubnet,
+	))
+
+	go func() {
+		listener, err := net.Listen("tcp", handlers.Flags.GRPCAddr)
+		if err != nil {
+			logger.Sugar.Fatal("gRPC listen error:", err)
+		}
+		logger.Sugar.Info("Starting gRPC server on ", handlers.Flags.GRPCAddr)
+		if err := grpcServer.Serve(listener); err != nil {
+			logger.Sugar.Fatal("gRPC serve error:", err)
+		}
+	}()
+
 	<-signalChan
 	logger.Sugar.Info("Shutting down server...")
 	storageImpl.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+	grpcServer.GracefulStop()
 
 	if err := srv.Shutdown(ctx); err != nil {
 		logger.Sugar.Fatal("Server forced to shutdown:", err)

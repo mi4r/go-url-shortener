@@ -18,6 +18,7 @@ type Flags struct {
 	DataBaseDSN        string `json:"database_dsn"`      // DSN (Data Source Name) для подключения к базе данных.
 	HTTPSEnabled       bool   `json:"enable_https"`      // Возможность подключения к HTTPS-серверу
 	TrustedSubnet      string `json:"trusted_subnet"`    // Доверенная подсеть сервера
+	GRPCAddr           string `json:"grpc_addr"`         // Адрес и порт для запуска grpc сервера.
 }
 
 // String возвращает строковое представление текущих параметров конфигурации.
@@ -41,6 +42,7 @@ func Init() *Flags {
 	httpsEnabled := flag.Bool("s", false, "Enable HTTPS")
 	trustSubnet := flag.String("t", "", "Trusted server subnet")
 	configFile := flag.String("c", "", "Path to JSON config file")
+	grpcAddr := flag.String("g", ":50051", "Address and port to run grpc server")
 	flag.Parse()
 
 	// Переопределение значений из переменных окружения, если они заданы.
@@ -65,6 +67,9 @@ func Init() *Flags {
 	if envConfigFile := os.Getenv("CONFIG"); envConfigFile != "" {
 		*configFile = envConfigFile
 	}
+	if envGRPC := os.Getenv("GRPC_ADDRESS"); envGRPC != "" {
+		*grpcAddr = envGRPC
+	}
 
 	config := Flags{
 		RunAddr:            *addr,
@@ -73,6 +78,7 @@ func Init() *Flags {
 		DataBaseDSN:        *dataBase,
 		HTTPSEnabled:       *httpsEnabled,
 		TrustedSubnet:      *trustSubnet,
+		GRPCAddr:           *grpcAddr,
 	}
 
 	if *configFile != "" {
@@ -99,6 +105,9 @@ func Init() *Flags {
 				}
 				if *trustSubnet == "" && fileConfig.TrustedSubnet != "" {
 					config.TrustedSubnet = fileConfig.TrustedSubnet
+				}
+				if *grpcAddr == ":50051" && fileConfig.GRPCAddr != "" {
+					config.GRPCAddr = fileConfig.GRPCAddr
 				}
 			}
 		}
