@@ -3,16 +3,18 @@ syntax = "proto3";
 package shortener;
 option go_package = "github.com/mi4r/go-url-shortener/internal/proto";
 
-import "google/protobuf/empty.proto";
-
 service Shortener {
   rpc Shorten(ShortenRequest) returns (ShortenResponse);
   rpc GetOriginal(GetOriginalRequest) returns (GetOriginalResponse);
   rpc BatchShorten(BatchShortenRequest) returns (BatchShortenResponse);
-  rpc GetUserURLs(google.protobuf.Empty) returns (GetUserURLsResponse);
-  rpc DeleteUserURLs(DeleteUserURLsRequest) returns (google.protobuf.Empty);
-  rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty);
+  rpc GetUserURLs(Empty) returns (GetUserURLsResponse);
+  rpc DeleteUserURLs(DeleteUserURLsRequest) returns (Empty);
+  rpc Ping(Empty) returns (Empty);
   rpc InternalStats(InternalStatsRequest) returns (InternalStatsResponse);
+}
+
+message Empty {
+
 }
 
 message ShortenRequest {
