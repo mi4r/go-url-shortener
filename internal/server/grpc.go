@@ -23,6 +23,12 @@ type GRPCServer struct {
 	service *service.Shortener
 }
 
+type contextKey string
+
+const (
+	userIDKey contextKey = "user-id"
+)
+
 func NewGRPCServer(storage storage.Storage, baseURL string, trustedSubnet *net.IPNet) *GRPCServer {
 	return &GRPCServer{
 		service: service.NewShortener(storage, baseURL, trustedSubnet),
@@ -187,7 +193,7 @@ func AuthInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServe
 		userID = userIDs[0]
 	}
 
-	ctx = context.WithValue(ctx, "userID", userID)
+	ctx = context.WithValue(ctx, userIDKey, userID)
 	resp, err := handler(ctx, req)
 
 	if len(userIDs) == 0 {
