@@ -1,4 +1,3 @@
-// internal/service/shortener.go
 package service
 
 import (

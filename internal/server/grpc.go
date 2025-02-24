@@ -1,4 +1,3 @@
-// internal/server/grpc.go
 package server
 
 import (
@@ -20,7 +19,7 @@ import (
 
 type GRPCServer struct {
 	pb.UnimplementedShortenerServer
-	service *service.Shortener
+	service service.ShortenerInterface
 }
 
 type contextKey string
@@ -86,7 +85,7 @@ func (s *GRPCServer) BatchShorten(ctx context.Context, req *pb.BatchShortenReque
 	for i, item := range result {
 		responseItems[i] = &pb.BatchShortenResponseItem{
 			CorrelationId: item.CorrelationID,
-			ShortUrl:      fmt.Sprintf("%s/%s", s.service.BaseURL, item.ShortURL),
+			ShortUrl:      fmt.Sprintf("%s/%s", s.service.(*service.Shortener).BaseURL, item.ShortURL),
 		}
 	}
 
@@ -107,7 +106,7 @@ func (s *GRPCServer) GetUserURLs(ctx context.Context, _ *pb.Empty) (*pb.GetUserU
 	responseItems := make([]*pb.URLResponseItem, len(urls))
 	for i, url := range urls {
 		responseItems[i] = &pb.URLResponseItem{
-			ShortUrl:    fmt.Sprintf("%s/%s", s.service.BaseURL, url.ShortURL),
+			ShortUrl:    fmt.Sprintf("%s/%s", s.service.(*service.Shortener).BaseURL, url.ShortURL),
 			OriginalUrl: url.OriginalURL,
 		}
 	}
@@ -182,24 +181,28 @@ func convertErrorToCode(err error) codes.Code {
 }
 
 func AuthInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-	md, _ := metadata.FromIncomingContext(ctx)
-	userIDs := md.Get("user-id")
+	// Всегда инициализируем метаданные
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		md = metadata.New(nil)
+	}
 
 	var userID string
-	if len(userIDs) == 0 {
+	userIDs := md.Get("user-id")
+	if len(userIDs) > 0 {
+		userID = userIDs[0]
+	} else {
 		userID = auth.GenerateUserID()
 		md.Set("user-id", userID)
-	} else {
-		userID = userIDs[0]
 	}
 
-	ctx = context.WithValue(ctx, userIDKey, userID)
-	resp, err := handler(ctx, req)
+	// Создаем новый контекст с обновленными метаданными
+	ctx = metadata.NewIncomingContext(ctx, md)
 
+	// Добавляем user-id в исходящие заголовки если необходимо
 	if len(userIDs) == 0 {
-		header := metadata.Pairs("set-user-id", userID)
-		grpc.SetHeader(ctx, header)
+		ctx = metadata.AppendToOutgoingContext(ctx, "set-user-id", userID)
 	}
 
-	return resp, err
+	return handler(ctx, req)
 }
