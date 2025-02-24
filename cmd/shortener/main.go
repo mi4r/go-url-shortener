@@ -12,15 +12,13 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/mi4r/go-url-shortener/cmd/config"
 	httpsconf "github.com/mi4r/go-url-shortener/cmd/https_conf"
 	"go.uber.org/zap"
 
-	"github.com/mi4r/go-url-shortener/internal/compress"
 	"github.com/mi4r/go-url-shortener/internal/handlers"
 	"github.com/mi4r/go-url-shortener/internal/logger"
-	"github.com/mi4r/go-url-shortener/internal/profiler"
+	"github.com/mi4r/go-url-shortener/internal/server"
 	"github.com/mi4r/go-url-shortener/internal/storage"
 
 	_ "net/http/pprof"
@@ -107,37 +105,8 @@ func main() {
 	}
 
 	// Инициализация маршрутизатора.
-	r := chi.NewRouter()
-	r.Use(logger.LoggingMiddleware)    // Логирование запросов.
-	r.Use(compress.CompressMiddleware) // Сжатие ответов.
-
-	// Основные маршруты API.
-	r.Route("/", func(r chi.Router) {
-		r.Post("/", handlers.ShortenURLHandler(storageImpl)) // Сокращение URL.
-		r.Route("/{id}", func(r chi.Router) {
-			r.Get("/", handlers.RedirectHandler(storageImpl)) // Редирект по сокращенному URL.
-		})
-	})
-	r.Route("/api", func(r chi.Router) {
-		r.Route("/shorten", func(r chi.Router) {
-			r.Post("/", handlers.APIShortenURLHandler(storageImpl))        // Сокращение URL в формате JSON.
-			r.Post("/batch", handlers.BatchShortenURLHandler(storageImpl)) // API для пакетного сокращения URL.
-		})
-		r.Route("/user", func(r chi.Router) {
-			r.Get("/urls", handlers.UserURLsHandler(storageImpl))          // Получение всех URL пользователя.
-			r.Delete("/urls", handlers.DeleteUserURLsHandler(storageImpl)) // Удаление URL пользователя.
-		})
-		r.Route("/internal", func(r chi.Router) {
-			r.Get("/stats", handlers.InternalStatsHandler(storageImpl, trustedSubnet))
-		})
-	})
-	r.Get("/ping", handlers.PingHandler(storageImpl)) // Проверка доступности хранилища.
-	r.Mount("/debug", profiler.Profiler())
-
-	srv := &http.Server{
-		Addr:    handlers.Flags.RunAddr,
-		Handler: r,
-	}
+	r := server.NewRouter(storageImpl, trustedSubnet)
+	srv := server.NewServer(handlers.Flags.RunAddr, r)
 
 	signalChan := httpsconf.MakeSigChan()
 
