@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.4.0
 // - protoc             v5.29.3
-// source: proto/shortener.proto
+// source: shortener.proto
 
 package proto
 
@@ -334,5 +334,5 @@ var Shortener_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "proto/shortener.proto",
+	Metadata: "shortener.proto",
 }
