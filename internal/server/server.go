@@ -5,11 +5,13 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"google.golang.org/grpc"
 
 	"github.com/mi4r/go-url-shortener/internal/compress"
 	"github.com/mi4r/go-url-shortener/internal/handlers"
 	"github.com/mi4r/go-url-shortener/internal/logger"
 	"github.com/mi4r/go-url-shortener/internal/profiler"
+	pb "github.com/mi4r/go-url-shortener/internal/proto"
 	"github.com/mi4r/go-url-shortener/internal/storage"
 )
 
@@ -51,5 +53,26 @@ func NewServer(addr string, handler http.Handler) *http.Server {
 	return &http.Server{
 		Addr:    addr,
 		Handler: handler,
+	}
+}
+
+func NewServerGRPC(storageImpl storage.Storage, trustedSubnet *net.IPNet) *grpc.Server {
+	grpcServer := grpc.NewServer(grpc.UnaryInterceptor(AuthInterceptor))
+	pb.RegisterShortenerServer(grpcServer, NewGRPCServer(
+		storageImpl,
+		handlers.Flags.BaseShortAddr,
+		trustedSubnet,
+	))
+	return grpcServer
+}
+
+func StartGRPC(grpcServer *grpc.Server) {
+	listener, err := net.Listen("tcp", handlers.Flags.GRPCAddr)
+	if err != nil {
+		logger.Sugar.Fatal("gRPC listen error:", err)
+	}
+	logger.Sugar.Info("Starting gRPC server on ", handlers.Flags.GRPCAddr)
+	if err := grpcServer.Serve(listener); err != nil {
+		logger.Sugar.Fatal("gRPC serve error:", err)
 	}
 }

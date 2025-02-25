@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"strings"
@@ -22,10 +23,11 @@ type GRPCServer struct {
 	service service.ShortenerInterface
 }
 
-type contextKey string
-
-const (
-	userIDKey contextKey = "user-id"
+var (
+	ErrURLNotFound   = errors.New("URL not found")
+	ErrURLDeleted    = errors.New("url deleted")
+	ErrAccessDenied  = errors.New("access denied")
+	ErrMissingUserID = errors.New("missing user ID")
 )
 
 func NewGRPCServer(storage storage.Storage, baseURL string, trustedSubnet *net.IPNet) *GRPCServer {
@@ -167,13 +169,13 @@ func getUserIDFromContext(ctx context.Context) string {
 
 func convertErrorToCode(err error) codes.Code {
 	switch {
-	case strings.Contains(err.Error(), "url not found"):
+	case errors.Is(err, ErrURLNotFound):
 		return codes.NotFound
-	case strings.Contains(err.Error(), "url deleted"):
+	case errors.Is(err, ErrURLDeleted):
 		return codes.NotFound
-	case strings.Contains(err.Error(), "access denied"):
+	case errors.Is(err, ErrAccessDenied):
 		return codes.PermissionDenied
-	case strings.Contains(err.Error(), "missing user ID"):
+	case errors.Is(err, ErrMissingUserID):
 		return codes.Unauthenticated
 	default:
 		return codes.Internal

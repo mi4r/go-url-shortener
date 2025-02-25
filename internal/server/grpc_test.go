@@ -93,7 +93,7 @@ func TestGetOriginal(t *testing.T) {
 
 	t.Run("GetOriginal NotFound", func(t *testing.T) {
 		mockService.On("GetOriginal", ctx, "invalid").
-			Return("", errors.New("url not found"))
+			Return("", ErrURLNotFound)
 
 		_, err := server.GetOriginal(ctx, &pb.GetOriginalRequest{Id: "invalid"})
 		assert.Equal(t, codes.NotFound, status.Code(err))
@@ -129,16 +129,22 @@ func TestAuthInterceptor(t *testing.T) {
 
 func TestConvertErrorToCode(t *testing.T) {
 	tests := []struct {
-		err  error
-		code codes.Code
+		name     string
+		err      error
+		expected codes.Code
 	}{
-		{errors.New("access denied"), codes.PermissionDenied},
-		{errors.New("url not found"), codes.NotFound},
-		{errors.New("other error"), codes.Internal},
+		{"URL Not Found", ErrURLNotFound, codes.NotFound},
+		{"URL Deleted", ErrURLDeleted, codes.NotFound},
+		{"Access Denied", ErrAccessDenied, codes.PermissionDenied},
+		{"Missing User ID", ErrMissingUserID, codes.Unauthenticated},
+		{"Unknown Error", errors.New("unknown error"), codes.Internal},
 	}
 
 	for _, tt := range tests {
-		assert.Equal(t, tt.code, convertErrorToCode(tt.err))
+		t.Run(tt.name, func(t *testing.T) {
+			code := convertErrorToCode(tt.err)
+			assert.Equal(t, tt.expected, code, "Код ошибки должен совпадать")
+		})
 	}
 }
 
