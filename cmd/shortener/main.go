@@ -8,18 +8,17 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"time"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/mi4r/go-url-shortener/cmd/config"
 	httpsconf "github.com/mi4r/go-url-shortener/cmd/https_conf"
 	"go.uber.org/zap"
 
-	"github.com/mi4r/go-url-shortener/internal/compress"
 	"github.com/mi4r/go-url-shortener/internal/handlers"
 	"github.com/mi4r/go-url-shortener/internal/logger"
-	"github.com/mi4r/go-url-shortener/internal/profiler"
+	"github.com/mi4r/go-url-shortener/internal/server"
 	"github.com/mi4r/go-url-shortener/internal/storage"
 
 	_ "net/http/pprof"
@@ -96,35 +95,18 @@ func main() {
 	}
 	defer storageImpl.Close()
 
-	// Инициализация маршрутизатора.
-	r := chi.NewRouter()
-	r.Use(logger.LoggingMiddleware)    // Логирование запросов.
-	r.Use(compress.CompressMiddleware) // Сжатие ответов.
-
-	// Основные маршруты API.
-	r.Route("/", func(r chi.Router) {
-		r.Post("/", handlers.ShortenURLHandler(storageImpl)) // Сокращение URL.
-		r.Route("/{id}", func(r chi.Router) {
-			r.Get("/", handlers.RedirectHandler(storageImpl)) // Редирект по сокращенному URL.
-		})
-	})
-	r.Route("/api", func(r chi.Router) {
-		r.Route("/shorten", func(r chi.Router) {
-			r.Post("/", handlers.APIShortenURLHandler(storageImpl))        // Сокращение URL в формате JSON.
-			r.Post("/batch", handlers.BatchShortenURLHandler(storageImpl)) // API для пакетного сокращения URL.
-		})
-		r.Route("/user", func(r chi.Router) {
-			r.Get("/urls", handlers.UserURLsHandler(storageImpl))          // Получение всех URL пользователя.
-			r.Delete("/urls", handlers.DeleteUserURLsHandler(storageImpl)) // Удаление URL пользователя.
-		})
-	})
-	r.Get("/ping", handlers.PingHandler(storageImpl)) // Проверка доступности хранилища.
-	r.Mount("/debug", profiler.Profiler())
-
-	srv := &http.Server{
-		Addr:    handlers.Flags.RunAddr,
-		Handler: r,
+	var trustedSubnet *net.IPNet
+	if handlers.Flags.TrustedSubnet != "" {
+		_, subnet, err := net.ParseCIDR(handlers.Flags.TrustedSubnet)
+		if err != nil {
+			logger.Sugar.Fatalf("Invalid trusted subnet: %v", err)
+		}
+		trustedSubnet = subnet
 	}
+
+	// Инициализация маршрутизатора.
+	r := server.NewRouter(storageImpl, trustedSubnet)
+	srv := server.NewServer(handlers.Flags.RunAddr, r)
 
 	signalChan := httpsconf.MakeSigChan()
 
@@ -144,11 +126,15 @@ func main() {
 		}
 	}()
 
+	grpcServer := server.NewServerGRPC(storageImpl, trustedSubnet)
+	go server.StartGRPC(grpcServer)
+
 	<-signalChan
 	logger.Sugar.Info("Shutting down server...")
 	storageImpl.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+	grpcServer.GracefulStop()
 
 	if err := srv.Shutdown(ctx); err != nil {
 		logger.Sugar.Fatal("Server forced to shutdown:", err)

@@ -26,6 +26,7 @@ func TestInit_EnvVariables(t *testing.T) {
 		BaseShortAddr:      "http://env.url",
 		URLStorageFilePath: "/env/storage",
 		DataBaseDSN:        "mysql://env_user:env_pass@env_host/env_db",
+		GRPCAddr:           ":50051",
 	}
 
 	actual := Init()

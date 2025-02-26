@@ -15,6 +15,7 @@ import (
 	"github.com/mi4r/go-url-shortener/cmd/config"
 	"github.com/mi4r/go-url-shortener/internal/handlers"
 	"github.com/mi4r/go-url-shortener/internal/storage"
+	"github.com/mi4r/go-url-shortener/internal/storage/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -264,46 +265,6 @@ type BatchResponseItem struct {
 	ShortURL      string `json:"short_url"`
 }
 
-type MockStorage struct {
-	mock.Mock
-}
-
-// GetURLsByUserID implements storage.Storage.
-func (m *MockStorage) GetURLsByUserID(userID string) ([]storage.URL, error) {
-	args := m.Called(userID)
-	return args.Get(0).([]storage.URL), args.Error(1)
-}
-
-func (m *MockStorage) Close() error {
-	args := m.Called()
-	return args.Error(0)
-}
-
-func (m *MockStorage) Get(shortURL string) (storage.URL, bool) {
-	args := m.Called(shortURL)
-	return args.Get(0).(storage.URL), args.Bool(1)
-}
-
-func (m *MockStorage) Save(url storage.URL) (string, error) {
-	args := m.Called(url)
-	return args.Get(0).(string), args.Error(1)
-}
-
-func (m *MockStorage) GetNextID() (int, error) {
-	args := m.Called()
-	return args.Int(0), args.Error(1)
-}
-
-func (m *MockStorage) SaveBatch(urls []storage.URL) ([]string, error) {
-	args := m.Called(urls)
-	return args.Get(0).([]string), args.Error(1)
-}
-
-func (m *MockStorage) MarkURLsAsDeleted(userID string, shortIDs []string) error {
-	args := m.Called(userID, shortIDs)
-	return args.Error(0)
-}
-
 func TestBatchShortenURLHandler_Success(t *testing.T) {
 	handlers.Flags = &config.Flags{
 		RunAddr:            "localhost:8080",
@@ -313,7 +274,7 @@ func TestBatchShortenURLHandler_Success(t *testing.T) {
 	}
 	defer os.Remove("test_storage.json")
 
-	mockStorage := new(MockStorage)
+	mockStorage := new(mocks.MockStorage)
 
 	batchRequest := []BatchRequestItem{
 		{CorrelationID: "1", OriginalURL: "https://example.com/1"},
@@ -364,7 +325,7 @@ func TestBatchShortenURLHandler_Fail(t *testing.T) {
 		name           string
 		method         string
 		requestBody    interface{}
-		mockBehavior   func(m *MockStorage)
+		mockBehavior   func(m *mocks.MockStorage)
 		expectedStatus int
 		expectedBody   interface{}
 	}{
@@ -372,7 +333,7 @@ func TestBatchShortenURLHandler_Fail(t *testing.T) {
 			name:           "Empty Batch",
 			method:         http.MethodPost,
 			requestBody:    []BatchRequestItem{},
-			mockBehavior:   func(m *MockStorage) {},
+			mockBehavior:   func(m *mocks.MockStorage) {},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   nil,
 		},
@@ -380,7 +341,7 @@ func TestBatchShortenURLHandler_Fail(t *testing.T) {
 			name:           "Invalid Method",
 			method:         http.MethodGet,
 			requestBody:    nil,
-			mockBehavior:   func(m *MockStorage) {},
+			mockBehavior:   func(m *mocks.MockStorage) {},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   nil,
 		},
@@ -388,7 +349,7 @@ func TestBatchShortenURLHandler_Fail(t *testing.T) {
 			name:           "Invalid JSON",
 			method:         http.MethodPost,
 			requestBody:    "invalid json",
-			mockBehavior:   func(m *MockStorage) {},
+			mockBehavior:   func(m *mocks.MockStorage) {},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   nil,
 		},
@@ -396,7 +357,7 @@ func TestBatchShortenURLHandler_Fail(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockStorage := new(MockStorage)
+			mockStorage := new(mocks.MockStorage)
 			tt.mockBehavior(mockStorage)
 
 			handler := handlers.BatchShortenURLHandler(mockStorage)

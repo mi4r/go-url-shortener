@@ -1,0 +1,74 @@
+syntax = "proto3";
+
+package shortener;
+option go_package = "github.com/mi4r/go-url-shortener/proto";
+
+service Shortener {
+  rpc Shorten(ShortenRequest) returns (ShortenResponse);
+  rpc GetOriginal(GetOriginalRequest) returns (GetOriginalResponse);
+  rpc BatchShorten(BatchShortenRequest) returns (BatchShortenResponse);
+  rpc GetUserURLs(Empty) returns (GetUserURLsResponse);
+  rpc DeleteUserURLs(DeleteUserURLsRequest) returns (Empty);
+  rpc Ping(Empty) returns (Empty);
+  rpc InternalStats(InternalStatsRequest) returns (InternalStatsResponse);
+}
+
+message Empty {
+
+}
+
+message ShortenRequest {
+  string url = 1;
+}
+
+message ShortenResponse {
+  string result = 1;
+}
+
+message GetOriginalRequest {
+  string id = 1;
+}
+
+message GetOriginalResponse {
+  string url = 1;
+}
+
+message BatchShortenRequestItem {
+  string correlation_id = 1;
+  string original_url = 2;
+}
+
+message BatchShortenRequest {
+  repeated BatchShortenRequestItem items = 1;
+}
+
+message BatchShortenResponseItem {
+  string correlation_id = 1;
+  string short_url = 2;
+}
+
+message BatchShortenResponse {
+  repeated BatchShortenResponseItem items = 1;
+}
+
+message URLResponseItem {
+  string short_url = 1;
+  string original_url = 2;
+}
+
+message GetUserURLsResponse {
+  repeated URLResponseItem items = 1;
+}
+
+message DeleteUserURLsRequest {
+  repeated string ids = 1;
+}
+
+message InternalStatsRequest {
+  string trusted_subnet = 1;
+}
+
+message InternalStatsResponse {
+  int32 urls_cnt = 1;
+  int32 users_cnt = 2;
+}

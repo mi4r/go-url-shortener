@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"io"
+	"net"
 	"net/http"
 	"strconv"
 	"sync"
@@ -53,6 +54,12 @@ type BatchResponseItem struct {
 type URLResponseItem struct {
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
+}
+
+// StatsResponse представляет ответ в виде количества сокращённых URL и пользователей в сервисе
+type StatsResponse struct {
+	URLCnt  int `json:"urls"`
+	UserCnt int `json:"users"`
 }
 
 // generateShortID генерирует уникальный идентификатор для сокращённого URL.
@@ -399,5 +406,38 @@ func DeleteUserURLsHandler(storageImpl storage.Storage) http.HandlerFunc {
 
 		wg.Wait()
 		w.WriteHeader(http.StatusAccepted)
+	}
+}
+
+// InternalStatsHandler возвращает количество пользователей и сокращенных URL в сервисе.
+func InternalStatsHandler(storageImpl storage.Storage, trustedSubnet *net.IPNet) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ipStr := r.Header.Get("X-Real-IP")
+		ip := net.ParseIP(ipStr)
+		if ip == nil || trustedSubnet == nil || !trustedSubnet.Contains(ip) {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+		urlCnt, err := storageImpl.URLCount()
+		if err != nil {
+			http.Error(w, "Failed to get URL count", http.StatusInternalServerError)
+			return
+		}
+		userCnt, err := storageImpl.UserCount()
+		if err != nil {
+			http.Error(w, "Failed to get user count", http.StatusInternalServerError)
+			return
+		}
+
+		stats := StatsResponse{
+			URLCnt:  urlCnt,
+			UserCnt: userCnt,
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(stats); err != nil {
+			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+			return
+		}
 	}
 }
